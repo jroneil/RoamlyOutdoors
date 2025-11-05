@@ -1,6 +1,4 @@
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { db } from '../firebase/firebaseConfig';
 import type { EventFormValues } from '../types/event';
 import type { Group } from '../types/group';
 import useAuth from '../hooks/useAuth';
@@ -8,6 +6,12 @@ import {
   InsufficientCreditsError,
   consumeCreditsForEventPublish
 } from '../services/billing';
+import {
+  MissingGroupAssociationError,
+  UnauthorizedEventCreatorError,
+  createEvent
+} from '../services/events';
+import { isGroupSubscriptionActive, userCanManageGroup } from '../utils/eventRules';
 
 const getDefaultValues = (): EventFormValues => ({
   title: '',
@@ -20,7 +24,11 @@ const getDefaultValues = (): EventFormValues => ({
   tags: [],
   bannerImage: undefined,
   groupId: '',
-  groupTitle: ''
+  groupTitle: '',
+  feeAmount: '',
+  feeCurrency: 'USD',
+  feeDescription: '',
+  feeDisclosure: 'Fee covers permits, supplies, and shared costs so the adventure runs smoothly.'
 });
 
 interface CreateEventFormProps {
@@ -36,11 +44,15 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError }: CreateEventFo
   const [creditFeedback, setCreditFeedback] = useState<{ message: string; tone: 'success' | 'warning' | 'info' } | null>(null);
   const { profile } = useAuth();
 
+  const manageableGroups = useMemo(
+    () => groups.filter((group) => userCanManageGroup(group, profile?.uid)),
+    [groups, profile?.uid]
+  );
+
   useEffect(() => {
-    if (!values.groupId && groups.length > 0) {
+    if (!values.groupId && manageableGroups.length > 0) {
       const preferredGroup =
-        groups.find((group) => group.subscriptionStatus === 'active' && !group.subscriptionExpiredAt) ??
-        groups[0];
+        manageableGroups.find((group) => isGroupSubscriptionActive(group)) ?? manageableGroups[0];
 
       setValues((prev) => ({
         ...prev,
@@ -48,20 +60,14 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError }: CreateEventFo
         groupTitle: preferredGroup.title
       }));
     }
-  }, [groups, values.groupId]);
+  }, [manageableGroups, values.groupId]);
 
   const selectedGroup = useMemo(
-    () => groups.find((group) => group.id === values.groupId) ?? null,
-    [groups, values.groupId]
+    () => manageableGroups.find((group) => group.id === values.groupId) ?? null,
+    [manageableGroups, values.groupId]
   );
 
-  const hasActiveSubscription = (group: Group | null) => {
-    if (!group) return false;
-    const status = group.subscriptionStatus ?? 'active';
-    return status === 'active' && !group.subscriptionExpiredAt;
-  };
-
-  const selectedGroupIsActive = hasActiveSubscription(selectedGroup);
+  const selectedGroupIsActive = selectedGroup ? isGroupSubscriptionActive(selectedGroup) : false;
 
   const isValid = useMemo(() => {
     return (
@@ -69,9 +75,10 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError }: CreateEventFo
       values.location.trim().length > 2 &&
       Boolean(values.startDate) &&
       Boolean(values.hostName) &&
-      Boolean(values.groupId)
+      Boolean(values.groupId) &&
+      manageableGroups.some((group) => group.id === values.groupId)
     );
-  }, [values]);
+  }, [manageableGroups, values]);
 
   const handleChange = <K extends keyof EventFormValues>(field: K, value: EventFormValues[K]) => {
     setValues((prev) => ({ ...prev, [field]: value }));
@@ -88,12 +95,12 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError }: CreateEventFo
         throw new Error('You must be signed in to publish events.');
       }
 
-      const selectedGroup = groups.find((group) => group.id === values.groupId);
+      const selectedGroup = manageableGroups.find((group) => group.id === values.groupId);
       if (!selectedGroup) {
-        throw new Error('Please select a group for this event.');
+        throw new MissingGroupAssociationError();
       }
 
-      if (!hasActiveSubscription(selectedGroup)) {
+      if (!isGroupSubscriptionActive(selectedGroup)) {
         throw new Error('The selected group needs an active subscription to publish events.');
       }
 
@@ -118,24 +125,18 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError }: CreateEventFo
         });
       }
 
-      const payload = {
-        ...values,
-        capacity: Number(values.capacity) || 0,
-        tags: values.tags.map((tag) => tag.trim()).filter(Boolean),
-        startDate: new Date(values.startDate),
-        endDate: values.endDate ? new Date(values.endDate) : null,
-        bannerImage: values.bannerImage?.trim() || null,
-        attendees: [],
+      const result = await createEvent({ values, group: selectedGroup, creatorId: profile.uid });
+      setValues((prev) => ({
+        ...getDefaultValues(),
+        groupId: selectedGroup.id,
         groupTitle: selectedGroup.title,
-        createdAt: serverTimestamp(),
-        isVisible: true,
-        hiddenReason: null,
-        hiddenAt: null
-      };
-
-      await addDoc(collection(db, 'events'), payload);
-      setValues(getDefaultValues());
-      setFeedback('Event created successfully! You can see it in the list above.');
+        feeCurrency: prev.feeCurrency
+      }));
+      setFeedback(
+        result.isVisible
+          ? 'Event created successfully! You can see it in the list above.'
+          : 'Event saved but hidden until the subscription is reactivated.'
+      );
     } catch (error) {
       if (error instanceof InsufficientCreditsError) {
         setCreditFeedback({
@@ -144,6 +145,8 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError }: CreateEventFo
             'You have run out of publishing credits. Visit the billing tab to purchase more before trying again.'
         });
         setFeedback(null);
+      } else if (error instanceof MissingGroupAssociationError || error instanceof UnauthorizedEventCreatorError) {
+        setFeedback(error.message);
       } else if (error instanceof Error) {
         console.error(error);
         setFeedback(error.message || 'Unable to create the event right now. Please try again.');
@@ -174,6 +177,10 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError }: CreateEventFo
             <span style={{ color: '#b45309' }}>
               Create a group first so adventures have a home.
             </span>
+          ) : manageableGroups.length === 0 ? (
+            <span style={{ color: '#b45309' }}>
+              You need to own or organize a group before publishing events.
+            </span>
           ) : (
             <select
               value={values.groupId}
@@ -182,13 +189,14 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError }: CreateEventFo
                   ...prev,
                   groupId: event.target.value,
                   groupTitle:
-                    groups.find((group) => group.id === event.target.value)?.title ?? prev.groupTitle
+                    manageableGroups.find((group) => group.id === event.target.value)?.title ??
+                    prev.groupTitle
                 }))
               }
               required
             >
-              {groups.map((group) => {
-                const inactive = !hasActiveSubscription(group);
+              {manageableGroups.map((group) => {
+                const inactive = !isGroupSubscriptionActive(group);
                 return (
                   <option key={group.id} value={group.id}>
                     {group.title}
@@ -292,6 +300,53 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError }: CreateEventFo
             onChange={(event) => handleChange('hostName', event.target.value)}
             required
           />
+        </div>
+        <div className="grid" style={{ gap: '0.75rem' }}>
+          <label style={{ fontWeight: 600 }}>Fee (optional)</label>
+          <div className="grid three-columns" style={{ gap: '0.75rem' }}>
+            <div className="grid" style={{ gap: '0.4rem' }}>
+              <span style={{ fontSize: '0.9rem', color: '#475569' }}>Amount</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={values.feeAmount}
+                placeholder="0.00"
+                onChange={(event) => handleChange('feeAmount', event.target.value)}
+              />
+            </div>
+            <div className="grid" style={{ gap: '0.4rem' }}>
+              <span style={{ fontSize: '0.9rem', color: '#475569' }}>Currency</span>
+              <select
+                value={values.feeCurrency}
+                onChange={(event) => handleChange('feeCurrency', event.target.value)}
+              >
+                {['USD', 'CAD', 'EUR', 'GBP', 'AUD'].map((currency) => (
+                  <option key={currency} value={currency}>
+                    {currency}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid" style={{ gap: '0.4rem' }}>
+              <span style={{ fontSize: '0.9rem', color: '#475569' }}>Short note</span>
+              <input
+                type="text"
+                value={values.feeDescription}
+                placeholder="e.g. Permit + shuttle"
+                onChange={(event) => handleChange('feeDescription', event.target.value)}
+              />
+            </div>
+          </div>
+          <textarea
+            rows={3}
+            value={values.feeDisclosure}
+            placeholder="Explain how the fee will be used so attendees know what to expect."
+            onChange={(event) => handleChange('feeDisclosure', event.target.value)}
+          />
+          <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+            Attendees see this disclosure before they RSVP. Leave the amount blank for free events.
+          </span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <button

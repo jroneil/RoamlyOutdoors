@@ -170,6 +170,7 @@ export const createGroupForOwner = async (
     subscriptionUpdatedAt: transition.subscriptionUpdatedAt,
     subscriptionRenewalDate: owner.billing.renewalDate ?? null,
     monthlyFeeCents,
+    organizerIds: [],
     membershipScreeningEnabled: Boolean(values.membershipScreeningEnabled),
     membershipRequests: [],
     normalizedTitle

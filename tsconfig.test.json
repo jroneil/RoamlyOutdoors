@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "./build-test",
+    "module": "ESNext",
+    "target": "ES2020",
+    "moduleResolution": "Node",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "sourceMap": false,
+    "declaration": false,
+    "emitDeclarationOnly": false
+  },
+  "include": ["src/utils/eventRules.ts", "src/utils/__tests__/eventRules.test.ts"],
+  "exclude": []
+}

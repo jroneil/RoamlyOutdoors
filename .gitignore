@@ -6,4 +6,5 @@ node_modules
 .vite
 .DS_Store
 dist
+build-test
 .idea

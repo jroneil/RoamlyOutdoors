@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { cancelRsvp, rsvpToEvent } from '../services/events';
 import { useEvent } from '../hooks/useEvent';
 import { useGroup } from '../hooks/useGroup';
+import { SUBSCRIPTION_HIDDEN_REASON } from '../utils/eventRules';
 
 const formatDate = (iso: string) => {
   if (!iso) return 'Date TBA';
@@ -14,6 +15,13 @@ const formatDate = (iso: string) => {
     return 'Date TBA';
   }
 };
+
+const formatCurrency = (amountCents: number, currency = 'USD') =>
+  new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: amountCents % 100 === 0 ? 0 : 2
+  }).format(amountCents / 100);
 
 const EventDetailsPage = () => {
   const { eventId } = useParams<{ eventId: string }>();
@@ -56,11 +64,22 @@ const EventDetailsPage = () => {
   }
 
   const availableSpots = Math.max(event.capacity - event.attendees.length, 0);
-  const hiddenBecauseSubscription = event.hiddenReason === 'subscription_expired';
+  const hiddenBecauseSubscription = event.hiddenReason === SUBSCRIPTION_HIDDEN_REASON;
   const isHidden = !event.isVisible;
+  const feeLabel =
+    event.feeAmountCents && event.feeCurrency
+      ? `${formatCurrency(event.feeAmountCents, event.feeCurrency)}${
+          event.feeDescription ? ` • ${event.feeDescription}` : ''
+        }`
+      : 'Free';
+  const rsvpDisabled = isHidden;
 
   const handleRsvp = async (formEvent: FormEvent<HTMLFormElement>) => {
     formEvent.preventDefault();
+    if (rsvpDisabled) {
+      setFeedback('This event is hidden and not accepting RSVPs right now.');
+      return;
+    }
     setIsSubmitting(true);
     setFeedback(null);
     try {
@@ -124,23 +143,29 @@ const EventDetailsPage = () => {
             <h1 className="section-title">{event.title}</h1>
             <p style={{ color: '#475569', fontSize: '1.05rem', lineHeight: 1.6 }}>{event.description}</p>
           </div>
-          <div className="grid" style={{ gap: '0.85rem' }}>
-            <div>
-              <span className="badge">📍 {event.location}</span>
-            </div>
-            <div className="grid" style={{ gap: '0.35rem' }}>
-              <span className="badge">Starts: {formatDate(event.startDate)}</span>
-              {event.endDate && <span className="badge">Wraps: {formatDate(event.endDate)}</span>}
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <span className="tag light">Hosted by {event.hostName}</span>
-              <span className="tag">{availableSpots > 0 ? `${availableSpots} spots left` : 'Fully booked'}</span>
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              {event.tags.map((tagLabel) => (
-                <span key={tagLabel} className="badge">
-                  #{tagLabel}
-                </span>
+            <div className="grid" style={{ gap: '0.85rem' }}>
+              <div>
+                <span className="badge">📍 {event.location}</span>
+              </div>
+              <div className="grid" style={{ gap: '0.35rem' }}>
+                <span className="badge">Starts: {formatDate(event.startDate)}</span>
+                {event.endDate && <span className="badge">Wraps: {formatDate(event.endDate)}</span>}
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <span className="tag light">Hosted by {event.hostName}</span>
+                <span className="tag">{availableSpots > 0 ? `${availableSpots} spots left` : 'Fully booked'}</span>
+              </div>
+              <div className="grid" style={{ gap: '0.35rem' }}>
+                <span className="badge">Fee: {feeLabel}</span>
+                {event.feeDisclosure && (
+                  <p style={{ color: '#1f2937', margin: 0 }}>{event.feeDisclosure}</p>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {event.tags.map((tagLabel) => (
+                  <span key={tagLabel} className="badge">
+                    #{tagLabel}
+                  </span>
               ))}
             </div>
           </div>
@@ -231,10 +256,16 @@ const EventDetailsPage = () => {
             value={attendeeName}
             onChange={(event) => setAttendeeName(event.target.value)}
             required
+            disabled={rsvpDisabled}
           />
-          <button className="primary" type="submit" disabled={isSubmitting || !attendeeName.trim()}>
+          <button className="primary" type="submit" disabled={isSubmitting || !attendeeName.trim() || rsvpDisabled}>
             {isSubmitting ? 'Saving RSVP...' : 'RSVP'}
           </button>
+          {rsvpDisabled && (
+            <span style={{ color: '#b45309' }}>
+              This event is hidden until the organizer renews their subscription. RSVPs are paused.
+            </span>
+          )}
           {feedback && <span style={{ color: '#0f766e' }}>{feedback}</span>}
         </form>
 
