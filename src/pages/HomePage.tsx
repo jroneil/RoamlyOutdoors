@@ -8,6 +8,7 @@ import GroupMembershipRequests from '../components/GroupMembershipRequests';
 import GroupOwnershipTransferForm from '../components/GroupOwnershipTransferForm';
 import { useEvents } from '../hooks/useEvents';
 import { useGroups } from '../hooks/useGroups';
+import useAuth from '../hooks/useAuth';
 
 const HomePage = () => {
   const [search, setSearch] = useState('');
@@ -19,6 +20,7 @@ const HomePage = () => {
     tag,
     filter
   });
+  const { profile } = useAuth();
   const {
     groups,
     isLoading: isLoadingGroups,
@@ -30,6 +32,19 @@ const HomePage = () => {
     () => Object.fromEntries(groups.map((group) => [group.id, group])),
     [groups]
   );
+  const manageableGroups = useMemo(() => {
+    if (!profile) {
+      return [];
+    }
+
+    if (profile.role === 'admin') {
+      return groups;
+    }
+
+    const userId = profile.uid;
+    return groups.filter((group) => group.ownerId === userId || group.organizers.includes(userId));
+  }, [groups, profile]);
+  const canManageEvents = Boolean(profile && (profile.role === 'admin' || manageableGroups.length > 0));
   const eventCountByGroup = useMemo(() => {
     return allEvents.reduce<Record<string, number>>((acc, event) => {
       if (!event.groupId) return acc;
@@ -97,9 +112,10 @@ const HomePage = () => {
       />
 
       <CreateEventForm
-        groups={groups}
+        groups={manageableGroups}
         isLoadingGroups={isLoadingGroups}
         groupsError={groupsError}
+        canManageEvents={canManageEvents}
       />
     </div>
   );

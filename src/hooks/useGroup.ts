@@ -14,6 +14,23 @@ const toIso = (value: unknown) => {
   return String(value);
 };
 
+const sanitizeIdentifiers = (values: unknown): string[] => {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  return values
+    .map((value) => (typeof value === 'string' ? value.trim() : ''))
+    .filter((value) => {
+      if (!value || seen.has(value)) {
+        return false;
+      }
+      seen.add(value);
+      return true;
+    });
+};
+
 const mapMembershipRequest = (value: unknown): MembershipRequest | null => {
   if (!value || typeof value !== 'object') {
     return null;

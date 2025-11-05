@@ -42,6 +42,7 @@ export interface UserDTO {
   organizationName?: string;
   updatedAt: string;
   createdAt: string;
+  organizerGroupIds: string[];
 }
 
 export interface AppUser extends UserDTO {
@@ -64,6 +65,7 @@ export const DEFAULT_USER_DTO: UserDTO = {
   contactEmail: '',
   billing: DEFAULT_BILLING_PROFILE,
   organizationName: undefined,
+  organizerGroupIds: [],
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString()
 };

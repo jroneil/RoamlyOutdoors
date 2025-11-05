@@ -16,6 +16,7 @@ export interface Group {
   ownerId?: string;
   organizerIds: string[];
   members: string[];
+  organizers: string[];
   bannerImage?: string;
   logoImage?: string;
   createdAt: string;

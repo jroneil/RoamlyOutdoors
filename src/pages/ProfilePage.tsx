@@ -52,6 +52,27 @@ const ProfilePage = () => {
         </dl>
       </section>
 
+      <section className="card profile-card">
+        <h2>Organizer access</h2>
+        {profile.organizerGroupIds?.length ? (
+          <>
+            <p>
+              You're an organizer for {profile.organizerGroupIds.length} group
+              {profile.organizerGroupIds.length === 1 ? '' : 's'}.
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              {profile.organizerGroupIds.map((groupId) => (
+                <span key={groupId} className="tag light">
+                  {groupId}
+                </span>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p>You haven't been assigned organizer access yet.</p>
+        )}
+      </section>
+
       <BillingSummary
         billing={profile.billing}
         userId={profile.uid}

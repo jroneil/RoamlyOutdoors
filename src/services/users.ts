@@ -23,6 +23,7 @@ const toAppUser = (uid: string, data: UserDTO, firebaseUser: User): AppUser => (
   displayName: firebaseUser.displayName,
   photoURL: firebaseUser.photoURL,
   ...data,
+  organizerGroupIds: Array.isArray(data.organizerGroupIds) ? data.organizerGroupIds : [],
   contactEmail: data.contactEmail || firebaseUser.email || ''
 });
 

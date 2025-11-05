@@ -231,6 +231,25 @@ button.ghost:hover {
   color: #ffffff;
 }
 
+button.link-button {
+  background: transparent;
+  border: none;
+  color: #0284c7;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+button.link-button:hover {
+  text-decoration: underline;
+}
+
+button.link-button:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
 main {
   padding: 3rem 0 4rem;
 }

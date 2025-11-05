@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import billingRouter from './routes/billing.js';
+import groupsRouter from './routes/groups.js';
 import stripeWebhookHandler from './routes/stripeWebhook.js';
 import { scheduleSubscriptionCleanup } from './jobs/subscriptionCleanup.js';
 
@@ -11,6 +12,7 @@ app.use(cors());
 app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), stripeWebhookHandler);
 app.use(express.json());
 app.use('/api/billing', billingRouter);
+app.use('/api/groups', groupsRouter);
 
 app.get('/healthz', (req, res) => {
   res.json({ status: 'ok' });

@@ -161,6 +161,7 @@ export const createGroupForOwner = async (
     ownerName: resolveOwnerName(values, owner),
     ownerId: owner.uid,
     members,
+    organizers: [],
     bannerImage: sanitizeUrl(values.bannerImage ?? undefined),
     logoImage: sanitizeUrl(values.logoImage ?? undefined),
     createdAt: serverTimestamp(),
