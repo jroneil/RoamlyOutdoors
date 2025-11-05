@@ -7,6 +7,9 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 
 const Layout = ({ children }: PropsWithChildren) => {
   const { profile, logout } = useAuth();
+  const hasOrganizerAccess = Boolean(
+    profile && ((profile.organizerGroupIds?.length ?? 0) > 0 || profile.role === 'organizer' || profile.role === 'admin')
+  );
 
   return (
     <div>
@@ -28,7 +31,7 @@ const Layout = ({ children }: PropsWithChildren) => {
             >
               Firestore guide
             </a>
-            {profile && (profile.role === 'organizer' || profile.role === 'admin') ? (
+            {hasOrganizerAccess ? (
               <NavLink to="/organizer" style={navLinkClass}>
                 Organizer tools
               </NavLink>

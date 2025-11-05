@@ -27,9 +27,10 @@ interface CreateEventFormProps {
   groups: Group[];
   isLoadingGroups: boolean;
   groupsError: string | null;
+  canManageEvents: boolean;
 }
 
-const CreateEventForm = ({ groups, isLoadingGroups, groupsError }: CreateEventFormProps) => {
+const CreateEventForm = ({ groups, isLoadingGroups, groupsError, canManageEvents }: CreateEventFormProps) => {
   const [values, setValues] = useState<EventFormValues>(getDefaultValues());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -37,6 +38,10 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError }: CreateEventFo
   const { profile } = useAuth();
 
   useEffect(() => {
+    if (!canManageEvents) {
+      return;
+    }
+
     if (!values.groupId && groups.length > 0) {
       const preferredGroup =
         groups.find((group) => group.subscriptionStatus === 'active' && !group.subscriptionExpiredAt) ??
@@ -48,7 +53,18 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError }: CreateEventFo
         groupTitle: preferredGroup.title
       }));
     }
-  }, [groups, values.groupId]);
+  }, [canManageEvents, groups, values.groupId]);
+
+  useEffect(() => {
+    if (!canManageEvents || !values.groupId) {
+      return;
+    }
+
+    const stillAvailable = groups.some((group) => group.id === values.groupId);
+    if (!stillAvailable) {
+      setValues((prev) => ({ ...prev, groupId: '', groupTitle: '' }));
+    }
+  }, [canManageEvents, groups, values.groupId]);
 
   const selectedGroup = useMemo(
     () => groups.find((group) => group.id === values.groupId) ?? null,
@@ -155,6 +171,31 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError }: CreateEventFo
       setIsSubmitting(false);
     }
   };
+
+  if (!profile) {
+    return (
+      <section id="create" className="card" style={{ marginTop: '3rem' }}>
+        <header style={{ marginBottom: '1.5rem' }}>
+          <h2 className="section-title">Host a new adventure</h2>
+          <p className="section-subtitle">Sign in to create and manage events.</p>
+        </header>
+      </section>
+    );
+  }
+
+  if (!canManageEvents) {
+    return (
+      <section id="create" className="card" style={{ marginTop: '3rem' }}>
+        <header style={{ marginBottom: '1.5rem' }}>
+          <h2 className="section-title">Host a new adventure</h2>
+          <p className="section-subtitle">You need organizer access for a group before publishing events.</p>
+        </header>
+        <p style={{ color: '#475569' }}>
+          Ask the group owner to promote you to organizer from the group management panel above.
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section id="create" className="card" style={{ marginTop: '3rem' }}>

@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, setDoc, type Unsubscribe } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { db } from '../firebase/firebaseConfig';
 import type { AppUser, BillingProfile, UserDTO } from '../types/user';
@@ -16,6 +16,7 @@ const toAppUser = (uid: string, data: UserDTO, firebaseUser: User): AppUser => (
   displayName: firebaseUser.displayName,
   photoURL: firebaseUser.photoURL,
   ...data,
+  organizerGroupIds: Array.isArray(data.organizerGroupIds) ? data.organizerGroupIds : [],
   contactEmail: data.contactEmail || firebaseUser.email || ''
 });
 
@@ -60,4 +61,27 @@ export const updateUserProfile = async (uid: string, payload: Partial<UserDTO>) 
 
 export const updateUserBillingProfile = async (uid: string, billing: Partial<BillingProfile>) => {
   await updateUserProfile(uid, { billing } as Partial<UserDTO>);
+};
+
+export const subscribeToUserProfile = (
+  firebaseUser: User,
+  callback: (profile: AppUser | null) => void
+): Unsubscribe => {
+  const ref = doc(db, USERS_COLLECTION, firebaseUser.uid);
+  return onSnapshot(
+    ref,
+    (snapshot) => {
+      if (!snapshot.exists()) {
+        callback(null);
+        return;
+      }
+
+      const data = snapshot.data() as UserDTO;
+      callback(toAppUser(firebaseUser.uid, data, firebaseUser));
+    },
+    (error) => {
+      console.error(error);
+      callback(null);
+    }
+  );
 };

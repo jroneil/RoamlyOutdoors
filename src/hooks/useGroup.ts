@@ -14,6 +14,23 @@ const toIso = (value: unknown) => {
   return String(value);
 };
 
+const sanitizeIdentifiers = (values: unknown): string[] => {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  return values
+    .map((value) => (typeof value === 'string' ? value.trim() : ''))
+    .filter((value) => {
+      if (!value || seen.has(value)) {
+        return false;
+      }
+      seen.add(value);
+      return true;
+    });
+};
+
 const mapMembershipRequest = (value: unknown): MembershipRequest | null => {
   if (!value || typeof value !== 'object') {
     return null;
@@ -51,7 +68,8 @@ const mapSnapshot = (snapshot: DocumentSnapshot<DocumentData>): Group | null => 
     description: data.description ?? '',
     ownerName: data.ownerName ?? '',
     ownerId: data.ownerId ?? undefined,
-    members: Array.isArray(data.members) ? data.members : [],
+    members: sanitizeIdentifiers(data.members),
+    organizers: sanitizeIdentifiers(data.organizers),
     bannerImage: data.bannerImage ?? undefined,
     logoImage: data.logoImage ?? undefined,
     createdAt: toIso(data.createdAt),
