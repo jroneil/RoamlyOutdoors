@@ -1,4 +1,5 @@
 import type { Event } from '../types/event';
+import type { Group } from '../types/group';
 import EventCard from './EventCard';
 
 interface EventListProps {
@@ -6,9 +7,10 @@ interface EventListProps {
   isLoading: boolean;
   error: string | null;
   total: number;
+  groupsById: Record<string, Group>;
 }
 
-const EventList = ({ events, isLoading, error, total }: EventListProps) => {
+const EventList = ({ events, isLoading, error, total, groupsById }: EventListProps) => {
   if (isLoading) {
     return (
       <section className="card" style={{ marginTop: '2rem' }}>
@@ -44,7 +46,7 @@ const EventList = ({ events, isLoading, error, total }: EventListProps) => {
       </header>
       <div className="grid three-columns">
         {events.map((event) => (
-          <EventCard key={event.id} event={event} />
+          <EventCard key={event.id} event={event} group={groupsById[event.groupId]} />
         ))}
       </div>
     </section>

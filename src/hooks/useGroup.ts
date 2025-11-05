@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { DocumentData, DocumentSnapshot, Timestamp, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
-import type { Event } from '../types/event';
+import type { Group } from '../types/group';
 
 const toIso = (value: unknown) => {
   if (!value) return '';
@@ -14,41 +14,35 @@ const toIso = (value: unknown) => {
   return String(value);
 };
 
-const mapSnapshot = (snapshot: DocumentSnapshot<DocumentData>): Event | null => {
+const mapSnapshot = (snapshot: DocumentSnapshot<DocumentData>): Group | null => {
   if (!snapshot.exists()) return null;
   const data = snapshot.data();
   return {
     id: snapshot.id,
     title: data.title ?? '',
     description: data.description ?? '',
-    location: data.location ?? '',
-    startDate: toIso(data.startDate),
-    endDate: toIso(data.endDate),
-    hostName: data.hostName ?? '',
-    capacity: Number(data.capacity ?? 0),
-    tags: Array.isArray(data.tags) ? data.tags : [],
-    attendees: Array.isArray(data.attendees) ? data.attendees : [],
+    ownerName: data.ownerName ?? '',
+    members: Array.isArray(data.members) ? data.members : [],
     bannerImage: data.bannerImage ?? undefined,
-    groupId: data.groupId ?? '',
-    groupTitle: data.groupTitle ?? '',
+    logoImage: data.logoImage ?? undefined,
     createdAt: toIso(data.createdAt)
-  };
+  } satisfies Group;
 };
 
-export const useEvent = (eventId?: string) => {
-  const [event, setEvent] = useState<Event | null>(null);
-  const [isLoading, setIsLoading] = useState(Boolean(eventId));
+export const useGroup = (groupId?: string) => {
+  const [group, setGroup] = useState<Group | null>(null);
+  const [isLoading, setIsLoading] = useState(Boolean(groupId));
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!eventId) return;
-    const ref = doc(db, 'events', eventId);
+    if (!groupId) return;
+    const ref = doc(db, 'groups', groupId);
     setIsLoading(true);
 
     const unsubscribe = onSnapshot(
       ref,
       (snapshot) => {
-        setEvent(mapSnapshot(snapshot));
+        setGroup(mapSnapshot(snapshot));
         setIsLoading(false);
       },
       (err) => {
@@ -59,7 +53,7 @@ export const useEvent = (eventId?: string) => {
     );
 
     return unsubscribe;
-  }, [eventId]);
+  }, [groupId]);
 
-  return { event, isLoading, error };
+  return { group, isLoading, error };
 };

@@ -1,9 +1,11 @@
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import type { Event } from '../types/event';
+import type { Group } from '../types/group';
 
 interface EventCardProps {
   event: Event;
+  group?: Group;
 }
 
 const formatDateRange = (startIso: string, endIso: string) => {
@@ -20,11 +22,44 @@ const formatDateRange = (startIso: string, endIso: string) => {
   return `${format(start, 'MMM d')} → ${format(end, 'MMM d')}`;
 };
 
-const EventCard = ({ event }: EventCardProps) => {
+const EventCard = ({ event, group }: EventCardProps) => {
   const availableSpots = Math.max(event.capacity - event.attendees.length, 0);
+  const groupName = (group?.title ?? event.groupTitle ?? '').trim();
+  const ownerName = group?.ownerName ?? event.hostName;
 
   return (
     <article className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.3rem' }}>
+      {groupName && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          {group?.logoImage ? (
+            <img
+              src={group.logoImage}
+              alt={`${groupName} logo`}
+              style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover' }}
+            />
+          ) : (
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: '50%',
+                background: 'rgba(59, 130, 246, 0.12)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 700,
+                color: '#1d4ed8'
+              }}
+            >
+              {groupName.slice(0, 1).toUpperCase()}
+            </div>
+          )}
+          <div>
+            <span className="badge">{groupName}</span>
+            <div style={{ fontSize: '0.85rem', color: '#475569' }}>Owner: {ownerName}</div>
+          </div>
+        </div>
+      )}
       {event.bannerImage ? (
         <img
           src={event.bannerImage}
