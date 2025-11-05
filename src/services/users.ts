@@ -61,3 +61,18 @@ export const updateUserProfile = async (uid: string, payload: Partial<UserDTO>) 
 export const updateUserBillingProfile = async (uid: string, billing: Partial<BillingProfile>) => {
   await updateUserProfile(uid, { billing } as Partial<UserDTO>);
 };
+
+export const subscribeToUserProfile = (
+  firebaseUser: User,
+  callback: (profile: AppUser) => void
+) => {
+  const ref = doc(db, USERS_COLLECTION, firebaseUser.uid);
+  
+  return onSnapshot(ref, (snapshot) => {
+    if (snapshot.exists()) {
+      const data = snapshot.data() as UserDTO;
+      const profile = toAppUser(firebaseUser.uid, data, firebaseUser);
+      callback(profile);
+    }
+  });
+};
