@@ -2,7 +2,12 @@ import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { db } from '../firebase/firebaseConfig';
 import type { AppUser, BillingProfile, UserDTO } from '../types/user';
-import { DEFAULT_USER_DTO } from '../types/user';
+import {
+  DEFAULT_BILLING_PROFILE,
+  DEFAULT_USER_DTO,
+  createDefaultCreditLedger,
+  createDefaultCreditUsage
+} from '../types/user';
 
 const USERS_COLLECTION = 'users';
 
