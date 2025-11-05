@@ -65,23 +65,15 @@ export const updateUserBillingProfile = async (uid: string, billing: Partial<Bil
 
 export const subscribeToUserProfile = (
   firebaseUser: User,
-  callback: (profile: AppUser | null) => void
-): Unsubscribe => {
+  callback: (profile: AppUser) => void
+) => {
   const ref = doc(db, USERS_COLLECTION, firebaseUser.uid);
-  return onSnapshot(
-    ref,
-    (snapshot) => {
-      if (!snapshot.exists()) {
-        callback(null);
-        return;
-      }
-
+  
+  return onSnapshot(ref, (snapshot) => {
+    if (snapshot.exists()) {
       const data = snapshot.data() as UserDTO;
-      callback(toAppUser(firebaseUser.uid, data, firebaseUser));
-    },
-    (error) => {
-      console.error(error);
-      callback(null);
+      const profile = toAppUser(firebaseUser.uid, data, firebaseUser);
+      callback(profile);
     }
-  );
+  });
 };
