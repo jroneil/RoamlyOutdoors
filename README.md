@@ -60,6 +60,42 @@ Events are stored in the `events` collection with the following fields:
 
 The UI reads timestamps whether they are stored as Firestore `Timestamp`s or ISO strings, making local testing easier.
 
+## Recommended Firestore security rules
+
+Deploy the following Firestore rules to ensure the app can read events publicly while restricting writes to event data and RSVP
+submissions to basic validation. You can paste these into the Firebase console under **Build → Firestore Database → Rules** or
+deploy them with the Firebase CLI.
+
+```firestore
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /events/{eventId} {
+      allow read: if true;
+
+      allow create: if request.resource.data.keys().hasOnly([
+        'title', 'description', 'location', 'startDate', 'endDate', 'hostName',
+        'capacity', 'tags', 'bannerImage', 'attendees', 'createdAt'
+      ]) &&
+        request.resource.data.title is string &&
+        request.resource.data.description is string &&
+        request.resource.data.location is string &&
+        request.resource.data.hostName is string &&
+        request.resource.data.capacity is int && request.resource.data.capacity > 0 &&
+        request.resource.data.tags is list &&
+        request.resource.data.createdAt == request.time;
+
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attendees']) &&
+        request.resource.data.attendees is list &&
+        request.resource.data.attendees.size() <= resource.data.capacity;
+    }
+  }
+}
+```
+
+These rules let anyone browse events while ensuring only valid documents are created and that RSVP updates cannot exceed the
+configured capacity. Adjust them to fit your authentication strategy if you later add user accounts or administrative flows.
+
 ## Scripts
 
 | Command        | Description                                  |
