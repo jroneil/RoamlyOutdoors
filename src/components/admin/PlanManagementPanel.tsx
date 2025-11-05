@@ -13,7 +13,8 @@ interface FormState {
 const defaultEntitlements: PlanEntitlements = {
   maxEventsPerMonth: 0,
   teamSeats: 0,
-  supportLevel: 'community'
+  supportLevel: 'community',
+  groupQuota: 0
 };
 
 const PlanManagementPanel = () => {
@@ -30,7 +31,11 @@ const PlanManagementPanel = () => {
       renewalDate: billing?.renewalDate ? billing.renewalDate.substring(0, 10) : '',
       planId: billing?.planId ?? '',
       entitlements: billing?.entitlements
-        ? { ...billing.entitlements }
+        ? {
+            ...defaultEntitlements,
+            ...billing.entitlements,
+            groupQuota: billing.entitlements.groupQuota ?? 0
+          }
         : { ...defaultEntitlements }
     };
   }, [profile?.billing]);
@@ -136,6 +141,16 @@ const PlanManagementPanel = () => {
               min={0}
               value={formState.entitlements.teamSeats}
               onChange={(event) => handleEntitlementChange('teamSeats', Number(event.target.value))}
+            />
+          </div>
+          <div className="form-row">
+            <label htmlFor="group-quota">Group quota</label>
+            <input
+              id="group-quota"
+              type="number"
+              min={0}
+              value={formState.entitlements.groupQuota}
+              onChange={(event) => handleEntitlementChange('groupQuota', Number(event.target.value))}
             />
           </div>
           <div className="form-row">

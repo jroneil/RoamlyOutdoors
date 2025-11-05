@@ -1,4 +1,4 @@
-import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { db } from '../firebase/firebaseConfig';
 import type { AppUser, BillingProfile, UserDTO } from '../types/user';

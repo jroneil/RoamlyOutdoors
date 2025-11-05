@@ -20,7 +20,8 @@ export const BILLING_PLANS = [
     entitlements: {
       maxEventsPerMonth: 10,
       teamSeats: 3,
-      supportLevel: 'community'
+      supportLevel: 'community',
+      groupQuota: 1
     }
   },
   {
@@ -34,7 +35,8 @@ export const BILLING_PLANS = [
     entitlements: {
       maxEventsPerMonth: 40,
       teamSeats: 10,
-      supportLevel: 'priority'
+      supportLevel: 'priority',
+      groupQuota: 3
     }
   },
   {
@@ -48,7 +50,8 @@ export const BILLING_PLANS = [
     entitlements: {
       maxEventsPerMonth: 200,
       teamSeats: 30,
-      supportLevel: 'concierge'
+      supportLevel: 'concierge',
+      groupQuota: 10
     }
   }
 ];

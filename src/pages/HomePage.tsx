@@ -4,6 +4,8 @@ import CreateGroupForm from '../components/CreateGroupForm';
 import EventFilters from '../components/EventFilters';
 import EventList from '../components/EventList';
 import GroupList from '../components/GroupList';
+import GroupMembershipRequests from '../components/GroupMembershipRequests';
+import GroupOwnershipTransferForm from '../components/GroupOwnershipTransferForm';
 import { useEvents } from '../hooks/useEvents';
 import { useGroups } from '../hooks/useGroups';
 
@@ -69,6 +71,10 @@ const HomePage = () => {
         error={groupsError}
         eventCountByGroup={eventCountByGroup}
       />
+
+      <GroupMembershipRequests groups={groups} />
+
+      <GroupOwnershipTransferForm groups={groups} />
 
       <CreateGroupForm />
 
