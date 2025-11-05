@@ -7,7 +7,8 @@ type FirebaseConfigKey =
   | 'VITE_FIREBASE_PROJECT_ID'
   | 'VITE_FIREBASE_STORAGE_BUCKET'
   | 'VITE_FIREBASE_MESSAGING_SENDER_ID'
-  | 'VITE_FIREBASE_APP_ID';
+  | 'VITE_FIREBASE_APP_ID'
+  | 'VITE_FIREBASE_MEAS_ID';
 
 const getConfigValue = (key: FirebaseConfigKey) => {
   const value = import.meta.env[key];
@@ -23,7 +24,8 @@ const firebaseConfig = {
   projectId: getConfigValue('VITE_FIREBASE_PROJECT_ID'),
   storageBucket: getConfigValue('VITE_FIREBASE_STORAGE_BUCKET'),
   messagingSenderId: getConfigValue('VITE_FIREBASE_MESSAGING_SENDER_ID'),
-  appId: getConfigValue('VITE_FIREBASE_APP_ID')
+  appId: getConfigValue('VITE_FIREBASE_APP_ID'),
+  measurementId: getConfigValue('VITE_FIREBASE_MEAS_ID')
 };
 
 export const firebaseApp = initializeApp(firebaseConfig);
