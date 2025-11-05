@@ -124,6 +124,8 @@ const BillingOverviewPage = () => {
 
       <BillingSummary
         billing={profile.billing}
+        userId={profile.uid}
+        contactEmail={profile.contactEmail}
         onManageSubscription={profile.billing.stripeCustomerId ? handleOpenPortal : undefined}
         isPortalLoading={isPortalLoading}
         portalError={portalError}
