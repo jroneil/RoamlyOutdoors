@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { db } from '../firebase/firebaseConfig';
 import type { AppUser, BillingProfile, UserDTO } from '../types/user';
@@ -22,7 +22,11 @@ export const getOrCreateUserProfile = async (firebaseUser: User): Promise<AppUse
     const nowIso = new Date().toISOString();
     const freshUser: UserDTO = {
       ...DEFAULT_USER_DTO,
-      billing: { ...DEFAULT_USER_DTO.billing },
+      billing: {
+        ...DEFAULT_BILLING_PROFILE,
+        credits: createDefaultCreditLedger(),
+        usage: createDefaultCreditUsage()
+      },
       contactEmail: firebaseUser.email ?? '',
       createdAt: nowIso,
       updatedAt: nowIso

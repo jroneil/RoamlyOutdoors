@@ -1,3 +1,6 @@
+import type { CreditLedger, CreditUsageSnapshot } from './billing';
+import { createDefaultCreditLedger, createDefaultCreditUsage } from './billing';
+
 export type UserRole = 'member' | 'organizer' | 'admin';
 
 export type SubscriptionStatus =

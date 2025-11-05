@@ -430,6 +430,214 @@ footer {
   color: #334155;
 }
 
+.credit-summary {
+  margin-bottom: 1.5rem;
+}
+
+.credit-usage {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.credit-usage__bar {
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 999px;
+  height: 10px;
+  overflow: hidden;
+}
+
+.credit-usage__fill {
+  background: linear-gradient(90deg, #2563eb, #0ea5e9);
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.credit-usage__label {
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.credit-settings {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding: 1.25rem;
+  border-radius: 16px;
+  background: rgba(37, 99, 235, 0.06);
+}
+
+.credit-settings h3 {
+  margin: 0;
+}
+
+.credit-settings__options {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  font-size: 0.95rem;
+}
+
+.credit-settings__grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.credit-settings__field {
+  display: grid;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #334155;
+}
+
+.credit-settings__feedback {
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.credit-settings__feedback.success {
+  color: #047857;
+}
+
+.credit-settings__feedback.warning {
+  color: #b45309;
+}
+
+.credit-purchase {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.credit-purchase__description {
+  color: #475569;
+  font-size: 0.95rem;
+}
+
+.credit-purchase__feedback {
+  font-size: 0.9rem;
+}
+
+.credit-purchase__feedback.success {
+  color: #047857;
+}
+
+.credit-purchase__feedback.warning {
+  color: #b45309;
+}
+
+.credit-bundle-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.credit-bundle {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 16px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.credit-bundle:hover {
+  border-color: #2563eb;
+  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.12);
+}
+
+.credit-bundle--active {
+  border-color: #2563eb;
+  box-shadow: 0 15px 35px rgba(37, 99, 235, 0.18);
+}
+
+.credit-bundle input {
+  margin-top: 0.35rem;
+}
+
+.credit-bundle__content {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.credit-bundle__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.credit-bundle__header h4 {
+  margin: 0;
+}
+
+.credit-bundle__price {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.credit-bundle__meta {
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.credit-bundle__highlight {
+  font-size: 0.85rem;
+  color: #1d4ed8;
+  font-weight: 500;
+}
+
+.dashboard-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.credit-meter {
+  margin-top: 2rem;
+  padding: 1.25rem;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 18px;
+  display: grid;
+  gap: 0.85rem;
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.credit-meter__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.credit-meter__bar {
+  height: 10px;
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.credit-meter__fill {
+  height: 100%;
+  background: linear-gradient(90deg, #14b8a6, #0ea5e9);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.credit-meter__description {
+  font-size: 0.9rem;
+  color: #334155;
+}
+
+.credit-meter__alert {
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  background: rgba(250, 204, 21, 0.15);
+  color: #92400e;
+  font-size: 0.9rem;
+}
+
 .loading-state {
   display: grid;
   justify-items: center;
