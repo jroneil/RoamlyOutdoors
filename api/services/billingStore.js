@@ -1,5 +1,6 @@
 import { getFirestore } from '../firebaseAdmin.js';
 import { findPlanById, findPlanByPriceId } from '../config/stripeProducts.js';
+import { syncSubscriptionArtifacts } from './subscriptionSync.js';
 
 const db = getFirestore();
 
@@ -100,6 +101,11 @@ export const upsertSubscription = async ({
   }
 
   await snapshot.ref.set(payload, { merge: true });
+  await syncSubscriptionArtifacts({
+    userId: snapshot.id,
+    status: payload.billing.subscriptionStatus,
+    renewalDate: payload.billing.renewalDate
+  });
   return true;
 };
 
@@ -126,6 +132,11 @@ export const updateStatusByCustomerId = async (customerId, status, extra = {}) =
   });
 
   await snapshot.ref.set(payload, { merge: true });
+  await syncSubscriptionArtifacts({
+    userId: snapshot.id,
+    status: payload.billing.subscriptionStatus,
+    renewalDate: payload.billing.renewalDate
+  });
   return true;
 };
 
@@ -154,5 +165,10 @@ export const recordInvoiceStatus = async ({ customerId, invoice, statusOverride 
   });
 
   await snapshot.ref.set(payload, { merge: true });
+  await syncSubscriptionArtifacts({
+    userId: snapshot.id,
+    status: payload.billing.subscriptionStatus,
+    renewalDate: payload.billing.renewalDate
+  });
   return true;
 };

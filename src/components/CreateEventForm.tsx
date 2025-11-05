@@ -38,9 +38,30 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError }: CreateEventFo
 
   useEffect(() => {
     if (!values.groupId && groups.length > 0) {
-      setValues((prev) => ({ ...prev, groupId: groups[0].id, groupTitle: groups[0].title }));
+      const preferredGroup =
+        groups.find((group) => group.subscriptionStatus === 'active' && !group.subscriptionExpiredAt) ??
+        groups[0];
+
+      setValues((prev) => ({
+        ...prev,
+        groupId: preferredGroup.id,
+        groupTitle: preferredGroup.title
+      }));
     }
   }, [groups, values.groupId]);
+
+  const selectedGroup = useMemo(
+    () => groups.find((group) => group.id === values.groupId) ?? null,
+    [groups, values.groupId]
+  );
+
+  const hasActiveSubscription = (group: Group | null) => {
+    if (!group) return false;
+    const status = group.subscriptionStatus ?? 'active';
+    return status === 'active' && !group.subscriptionExpiredAt;
+  };
+
+  const selectedGroupIsActive = hasActiveSubscription(selectedGroup);
 
   const isValid = useMemo(() => {
     return (
@@ -67,6 +88,15 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError }: CreateEventFo
         throw new Error('You must be signed in to publish events.');
       }
 
+      const selectedGroup = groups.find((group) => group.id === values.groupId);
+      if (!selectedGroup) {
+        throw new Error('Please select a group for this event.');
+      }
+
+      if (!hasActiveSubscription(selectedGroup)) {
+        throw new Error('The selected group needs an active subscription to publish events.');
+      }
+
       const creditResult = await consumeCreditsForEventPublish(profile.uid);
 
       if (creditResult.autoPurchaseTriggered) {
@@ -88,11 +118,6 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError }: CreateEventFo
         });
       }
 
-      const selectedGroup = groups.find((group) => group.id === values.groupId);
-      if (!selectedGroup) {
-        throw new Error('Please select a group for this event.');
-      }
-
       const payload = {
         ...values,
         capacity: Number(values.capacity) || 0,
@@ -102,7 +127,10 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError }: CreateEventFo
         bannerImage: values.bannerImage?.trim() || null,
         attendees: [],
         groupTitle: selectedGroup.title,
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        isVisible: true,
+        hiddenReason: null,
+        hiddenAt: null
       };
 
       await addDoc(collection(db, 'events'), payload);
@@ -159,11 +187,15 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError }: CreateEventFo
               }
               required
             >
-              {groups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.title}
-                </option>
-              ))}
+              {groups.map((group) => {
+                const inactive = !hasActiveSubscription(group);
+                return (
+                  <option key={group.id} value={group.id}>
+                    {group.title}
+                    {inactive ? ' — inactive subscription' : ''}
+                  </option>
+                );
+              })}
             </select>
           )}
         </div>
@@ -262,12 +294,21 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError }: CreateEventFo
           />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <button className="primary" type="submit" disabled={!isValid || isSubmitting}>
+          <button
+            className="primary"
+            type="submit"
+            disabled={!isValid || isSubmitting || !selectedGroupIsActive}
+          >
             {isSubmitting ? 'Creating...' : 'Publish event'}
           </button>
           <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
             Events are stored in your Firebase project under the <strong>events</strong> collection.
           </span>
+          {selectedGroup && !selectedGroupIsActive && (
+            <span style={{ color: '#b45309', fontSize: '0.9rem' }}>
+              {selectedGroup.title} needs an active subscription before new events become visible.
+            </span>
+          )}
           {creditFeedback && (
             <span
               style={{

@@ -30,10 +30,16 @@ const mapSnapshot = (snapshot: QuerySnapshot<DocumentData>): Group[] =>
       title: data.title ?? '',
       description: data.description ?? '',
       ownerName: data.ownerName ?? '',
+      ownerId: data.ownerId ?? undefined,
       members: Array.isArray(data.members) ? data.members : [],
       bannerImage: data.bannerImage ?? undefined,
       logoImage: data.logoImage ?? undefined,
-      createdAt: toIso(data.createdAt)
+      createdAt: toIso(data.createdAt),
+      subscriptionStatus: data.subscriptionStatus ?? 'none',
+      subscriptionExpiredAt: data.subscriptionExpiredAt ? toIso(data.subscriptionExpiredAt) : null,
+      subscriptionRenewedAt: data.subscriptionRenewedAt ? toIso(data.subscriptionRenewedAt) : null,
+      subscriptionUpdatedAt: data.subscriptionUpdatedAt ? toIso(data.subscriptionUpdatedAt) : null,
+      subscriptionRenewalDate: data.subscriptionRenewalDate ? toIso(data.subscriptionRenewalDate) : null
     } satisfies Group;
   });
 

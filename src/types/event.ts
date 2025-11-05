@@ -13,8 +13,14 @@ export interface Event {
   groupId: string;
   groupTitle: string;
   createdAt: string;
+  isVisible: boolean;
+  hiddenReason?: string | null;
+  hiddenAt?: string | null;
 }
 
-export type EventFormValues = Omit<Event, 'id' | 'attendees' | 'createdAt'> & {
+export type EventFormValues = Omit<
+  Event,
+  'id' | 'attendees' | 'createdAt' | 'isVisible' | 'hiddenReason' | 'hiddenAt'
+> & {
   attendees?: string[];
 };

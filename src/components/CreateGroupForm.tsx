@@ -2,6 +2,7 @@ import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { FormEvent, useMemo, useState } from 'react';
 import { db } from '../firebase/firebaseConfig';
 import type { GroupFormValues } from '../types/group';
+import useAuth from '../hooks/useAuth';
 
 const getDefaultValues = (): GroupFormValues => ({
   title: '',
@@ -16,6 +17,10 @@ const CreateGroupForm = () => {
   const [values, setValues] = useState<GroupFormValues>(getDefaultValues());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const { profile } = useAuth();
+
+  const subscriptionStatus = profile?.billing.subscriptionStatus ?? 'none';
+  const canCreateGroup = subscriptionStatus === 'active';
 
   const isValid = useMemo(() => {
     return values.title.trim().length > 2 && values.ownerName.trim().length > 1;
@@ -31,12 +36,26 @@ const CreateGroupForm = () => {
     setIsSubmitting(true);
     setFeedback(null);
     try {
+      if (!profile) {
+        throw new Error('You must be signed in to create a group.');
+      }
+
+      if (!canCreateGroup) {
+        throw new Error('An active subscription is required to create new groups.');
+      }
+
       const payload = {
         ...values,
         members: values.members?.map((member) => member.trim()).filter(Boolean) ?? [],
         bannerImage: values.bannerImage?.trim() || null,
         logoImage: values.logoImage?.trim() || null,
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        ownerId: profile.uid,
+        subscriptionStatus,
+        subscriptionExpiredAt: null,
+        subscriptionRenewedAt: serverTimestamp(),
+        subscriptionUpdatedAt: serverTimestamp(),
+        subscriptionRenewalDate: profile.billing.renewalDate ?? null
       };
 
       await addDoc(collection(db, 'groups'), payload);
@@ -124,9 +143,19 @@ const CreateGroupForm = () => {
           />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <button className="primary" type="submit" disabled={!isValid || isSubmitting}>
+          <button className="primary" type="submit" disabled={!isValid || isSubmitting || !canCreateGroup}>
             {isSubmitting ? 'Creating...' : 'Create group'}
           </button>
+          {!profile && (
+            <span style={{ color: '#b91c1c', fontSize: '0.9rem' }}>
+              Sign in to start organizing adventures with your crew.
+            </span>
+          )}
+          {profile && !canCreateGroup && (
+            <span style={{ color: '#b45309', fontSize: '0.9rem' }}>
+              Activate your subscription to create new groups for your community.
+            </span>
+          )}
           <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
             Groups live in the <strong>groups</strong> collection inside your Firebase project.
           </span>
