@@ -45,6 +45,8 @@ const mapDocToEvent = (snapshot: QuerySnapshot<DocumentData>) =>
       tags: Array.isArray(data.tags) ? data.tags : [],
       attendees: Array.isArray(data.attendees) ? data.attendees : [],
       bannerImage: data.bannerImage ?? undefined,
+      groupId: data.groupId ?? '',
+      groupTitle: data.groupTitle ?? '',
       createdAt: toIso(data.createdAt)
     } satisfies Event;
   });
@@ -108,6 +110,7 @@ export const useEvents = ({ search = '', tag = '', filter = 'upcoming' }: UseEve
     isLoading,
     error,
     total: events.length,
-    tags
+    tags,
+    allEvents: events
   };
 };

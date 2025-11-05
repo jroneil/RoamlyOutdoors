@@ -10,6 +10,8 @@ export interface Event {
   tags: string[];
   attendees: string[];
   bannerImage?: string;
+  groupId: string;
+  groupTitle: string;
   createdAt: string;
 }
 

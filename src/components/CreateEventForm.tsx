@@ -1,7 +1,8 @@
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { db } from '../firebase/firebaseConfig';
 import type { EventFormValues } from '../types/event';
+import type { Group } from '../types/group';
 
 const getDefaultValues = (): EventFormValues => ({
   title: '',
@@ -12,20 +13,35 @@ const getDefaultValues = (): EventFormValues => ({
   hostName: '',
   capacity: 10,
   tags: [],
-  bannerImage: undefined
+  bannerImage: undefined,
+  groupId: '',
+  groupTitle: ''
 });
 
-const CreateEventForm = () => {
+interface CreateEventFormProps {
+  groups: Group[];
+  isLoadingGroups: boolean;
+  groupsError: string | null;
+}
+
+const CreateEventForm = ({ groups, isLoadingGroups, groupsError }: CreateEventFormProps) => {
   const [values, setValues] = useState<EventFormValues>(getDefaultValues());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!values.groupId && groups.length > 0) {
+      setValues((prev) => ({ ...prev, groupId: groups[0].id, groupTitle: groups[0].title }));
+    }
+  }, [groups, values.groupId]);
 
   const isValid = useMemo(() => {
     return (
       values.title.trim().length > 2 &&
       values.location.trim().length > 2 &&
       Boolean(values.startDate) &&
-      Boolean(values.hostName)
+      Boolean(values.hostName) &&
+      Boolean(values.groupId)
     );
   }, [values]);
 
@@ -39,6 +55,11 @@ const CreateEventForm = () => {
     setIsSubmitting(true);
     setFeedback(null);
     try {
+      const selectedGroup = groups.find((group) => group.id === values.groupId);
+      if (!selectedGroup) {
+        throw new Error('Please select a group for this event.');
+      }
+
       const payload = {
         ...values,
         capacity: Number(values.capacity) || 0,
@@ -47,6 +68,7 @@ const CreateEventForm = () => {
         endDate: values.endDate ? new Date(values.endDate) : null,
         bannerImage: values.bannerImage?.trim() || null,
         attendees: [],
+        groupTitle: selectedGroup.title,
         createdAt: serverTimestamp()
       };
 
@@ -68,8 +90,38 @@ const CreateEventForm = () => {
         <p className="section-subtitle">
           Share the next hike, climb or paddle with the Roamly community.
         </p>
+        {groupsError && <p style={{ color: '#b91c1c' }}>Unable to load groups: {groupsError}</p>}
       </header>
       <form className="grid" style={{ gap: '1.25rem' }} onSubmit={handleSubmit}>
+        <div className="grid" style={{ gap: '0.75rem' }}>
+          <label style={{ fontWeight: 600 }}>Group *</label>
+          {isLoadingGroups ? (
+            <span>Loading your groups...</span>
+          ) : groups.length === 0 ? (
+            <span style={{ color: '#b45309' }}>
+              Create a group first so adventures have a home.
+            </span>
+          ) : (
+            <select
+              value={values.groupId}
+              onChange={(event) =>
+                setValues((prev) => ({
+                  ...prev,
+                  groupId: event.target.value,
+                  groupTitle:
+                    groups.find((group) => group.id === event.target.value)?.title ?? prev.groupTitle
+                }))
+              }
+              required
+            >
+              {groups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.title}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
         <div className="grid" style={{ gap: '0.75rem' }}>
           <label style={{ fontWeight: 600 }}>Event title *</label>
           <input
@@ -171,6 +223,11 @@ const CreateEventForm = () => {
           <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
             Events are stored in your Firebase project under the <strong>events</strong> collection.
           </span>
+          {groups.length === 0 && !isLoadingGroups && (
+            <span style={{ fontSize: '0.85rem', color: '#b45309' }}>
+              Add a group before creating an event — every adventure belongs to a crew.
+            </span>
+          )}
           {feedback && <span style={{ color: '#059669' }}>{feedback}</span>}
         </div>
       </form>
