@@ -16,6 +16,7 @@ export interface PlanEntitlements {
   maxEventsPerMonth: number;
   teamSeats: number;
   supportLevel: 'community' | 'priority' | 'concierge';
+  groupQuota: number;
 }
 
 export interface BillingProfile {

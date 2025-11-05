@@ -7,6 +7,13 @@ interface GroupListProps {
   eventCountByGroup: Record<string, number>;
 }
 
+const formatCurrency = (amountCents: number) =>
+  new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: amountCents % 100 === 0 ? 0 : 2
+  }).format(amountCents / 100);
+
 const GroupList = ({ groups, isLoading, error, eventCountByGroup }: GroupListProps) => {
   if (isLoading) {
     return (
@@ -44,6 +51,13 @@ const GroupList = ({ groups, isLoading, error, eventCountByGroup }: GroupListPro
       <div className="grid three-columns">
         {groups.map((group) => {
           const eventsForGroup = eventCountByGroup[group.id] ?? 0;
+          const feeTag =
+            group.monthlyFeeCents > 0
+              ? `${formatCurrency(group.monthlyFeeCents)} / mo`
+              : 'Free to join';
+          const pendingRequests = group.membershipRequests.filter(
+            (request) => request.status !== 'declined'
+          ).length;
           return (
             <article
               key={group.id}
@@ -111,6 +125,13 @@ const GroupList = ({ groups, isLoading, error, eventCountByGroup }: GroupListPro
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <span className="tag">{group.members.length} members</span>
                 <span className="tag light">{eventsForGroup} events</span>
+                <span className="tag light">{feeTag}</span>
+                <span className="tag light">
+                  Screening {group.membershipScreeningEnabled ? 'on' : 'off'}
+                </span>
+                {pendingRequests > 0 && (
+                  <span className="tag">{pendingRequests} pending requests</span>
+                )}
               </div>
               {group.members.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>

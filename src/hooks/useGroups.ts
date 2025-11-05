@@ -9,7 +9,31 @@ import {
   query
 } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
-import type { Group } from '../types/group';
+import type { Group, MembershipRequest } from '../types/group';
+
+const mapMembershipRequest = (value: unknown, toIso: (input: unknown) => string): MembershipRequest | null => {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const raw = value as Record<string, unknown>;
+  const status = raw.status === 'approved' || raw.status === 'declined' ? raw.status : 'pending';
+
+  const id = typeof raw.id === 'string' && raw.id.trim() ? raw.id.trim() : null;
+  const memberName = typeof raw.memberName === 'string' ? raw.memberName.trim() : '';
+
+  if (!id || !memberName) {
+    return null;
+  }
+
+  return {
+    id,
+    memberName,
+    message: typeof raw.message === 'string' ? raw.message : undefined,
+    submittedAt: toIso(raw.submittedAt),
+    status
+  };
+};
 
 const mapSnapshot = (snapshot: QuerySnapshot<DocumentData>): Group[] =>
   snapshot.docs.map((doc) => {
@@ -25,6 +49,12 @@ const mapSnapshot = (snapshot: QuerySnapshot<DocumentData>): Group[] =>
       return String(value);
     };
 
+    const membershipRequests: MembershipRequest[] = Array.isArray(data.membershipRequests)
+      ? data.membershipRequests
+          .map((request) => mapMembershipRequest(request, toIso))
+          .filter((request): request is MembershipRequest => Boolean(request))
+      : [];
+
     return {
       id: doc.id,
       title: data.title ?? '',
@@ -39,7 +69,14 @@ const mapSnapshot = (snapshot: QuerySnapshot<DocumentData>): Group[] =>
       subscriptionExpiredAt: data.subscriptionExpiredAt ? toIso(data.subscriptionExpiredAt) : null,
       subscriptionRenewedAt: data.subscriptionRenewedAt ? toIso(data.subscriptionRenewedAt) : null,
       subscriptionUpdatedAt: data.subscriptionUpdatedAt ? toIso(data.subscriptionUpdatedAt) : null,
-      subscriptionRenewalDate: data.subscriptionRenewalDate ? toIso(data.subscriptionRenewalDate) : null
+      subscriptionRenewalDate: data.subscriptionRenewalDate ? toIso(data.subscriptionRenewalDate) : null,
+      monthlyFeeCents:
+        typeof data.monthlyFeeCents === 'number' && Number.isFinite(data.monthlyFeeCents)
+          ? Math.max(0, Math.round(data.monthlyFeeCents))
+          : 0,
+      membershipScreeningEnabled: Boolean(data.membershipScreeningEnabled),
+      membershipRequests,
+      normalizedTitle: typeof data.normalizedTitle === 'string' ? data.normalizedTitle : undefined
     } satisfies Group;
   });
 

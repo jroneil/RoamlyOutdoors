@@ -1,5 +1,13 @@
 import type { SubscriptionStatus } from './user';
 
+export interface MembershipRequest {
+  id: string;
+  memberName: string;
+  message?: string;
+  submittedAt: string;
+  status?: 'pending' | 'approved' | 'declined';
+}
+
 export interface Group {
   id: string;
   title: string;
@@ -15,6 +23,10 @@ export interface Group {
   subscriptionRenewedAt?: string | null;
   subscriptionUpdatedAt?: string | null;
   subscriptionRenewalDate?: string | null;
+  monthlyFeeCents: number;
+  membershipScreeningEnabled: boolean;
+  membershipRequests: MembershipRequest[];
+  normalizedTitle?: string;
 }
 
 export type GroupFormValues = Omit<
@@ -28,6 +40,8 @@ export type GroupFormValues = Omit<
   | 'subscriptionUpdatedAt'
   | 'subscriptionRenewalDate'
   | 'ownerId'
+  | 'membershipRequests'
+  | 'normalizedTitle'
 > & {
   members?: string[];
 };

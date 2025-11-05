@@ -110,7 +110,7 @@ const BillingSummary = ({
       bundleId: credits.replenishment.bundleId
     });
     setOptimisticSettings(credits.replenishment);
-  }, [credits.replenishment.bundleId, credits.replenishment.mode, credits.replenishment.threshold]);
+  }, [credits.replenishment]);
 
   const usageSummary = useMemo(() => {
     const limit = usage.monthlyLimit;
@@ -310,6 +310,9 @@ const BillingSummary = ({
         <div className="profile-card__entitlements">
           <h3>Entitlements</h3>
           <ul>
+            <li>
+              <strong>{entitlements.groupQuota || 0}</strong> groups included in your plan
+            </li>
             <li>
               <strong>{entitlements.maxEventsPerMonth}</strong> hosted events per month
             </li>

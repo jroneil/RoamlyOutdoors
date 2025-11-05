@@ -1,8 +1,14 @@
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { FormEvent, useMemo, useState } from 'react';
-import { db } from '../firebase/firebaseConfig';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import type { GroupFormValues } from '../types/group';
 import useAuth from '../hooks/useAuth';
+import {
+  DuplicateGroupNameError,
+  GroupCapacityExceededError,
+  InactiveSubscriptionError,
+  createGroupForOwner,
+  getOwnedGroupCount
+} from '../services/groups';
+import { hasAvailableGroupCapacity } from '../utils/groupRules';
 
 const getDefaultValues = (): GroupFormValues => ({
   title: '',
@@ -10,21 +16,60 @@ const getDefaultValues = (): GroupFormValues => ({
   ownerName: '',
   members: [],
   bannerImage: undefined,
-  logoImage: undefined
+  logoImage: undefined,
+  monthlyFeeCents: 0,
+  membershipScreeningEnabled: false
 });
 
 const CreateGroupForm = () => {
   const [values, setValues] = useState<GroupFormValues>(getDefaultValues());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [ownedGroupCount, setOwnedGroupCount] = useState<number>(0);
+  const [isCountingGroups, setIsCountingGroups] = useState(false);
   const { profile } = useAuth();
 
   const subscriptionStatus = profile?.billing.subscriptionStatus ?? 'none';
   const canCreateGroup = subscriptionStatus === 'active';
+  const groupQuota = profile?.billing.entitlements?.groupQuota ?? 0;
+  const hasGroupCapacity = hasAvailableGroupCapacity(groupQuota, ownedGroupCount);
 
   const isValid = useMemo(() => {
     return values.title.trim().length > 2 && values.ownerName.trim().length > 1;
   }, [values.ownerName, values.title]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const ownerId = profile?.uid;
+    if (!ownerId) {
+      setOwnedGroupCount(0);
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    setIsCountingGroups(true);
+    getOwnedGroupCount(ownerId)
+      .then((count) => {
+        if (isMounted) {
+          setOwnedGroupCount(count);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setOwnedGroupCount(0);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsCountingGroups(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [profile?.uid]);
 
   const handleChange = <K extends keyof GroupFormValues>(field: K, value: GroupFormValues[K]) => {
     setValues((prev) => ({ ...prev, [field]: value }));
@@ -44,26 +89,30 @@ const CreateGroupForm = () => {
         throw new Error('An active subscription is required to create new groups.');
       }
 
-      const payload = {
-        ...values,
-        members: values.members?.map((member) => member.trim()).filter(Boolean) ?? [],
-        bannerImage: values.bannerImage?.trim() || null,
-        logoImage: values.logoImage?.trim() || null,
-        createdAt: serverTimestamp(),
-        ownerId: profile.uid,
-        subscriptionStatus,
-        subscriptionExpiredAt: null,
-        subscriptionRenewedAt: serverTimestamp(),
-        subscriptionUpdatedAt: serverTimestamp(),
-        subscriptionRenewalDate: profile.billing.renewalDate ?? null
-      };
+      if (!hasGroupCapacity) {
+        throw new GroupCapacityExceededError();
+      }
 
-      await addDoc(collection(db, 'groups'), payload);
+      await createGroupForOwner(profile, {
+        ...values,
+        ownerName: values.ownerName.trim(),
+        members: values.members?.map((member) => member.trim()).filter(Boolean) ?? []
+      });
+
+      setOwnedGroupCount((count) => count + 1);
       setValues(getDefaultValues());
       setFeedback('Group created! Start planning adventures for your crew.');
     } catch (error) {
       console.error(error);
-      setFeedback('We could not save the group. Please try again.');
+      if (error instanceof DuplicateGroupNameError) {
+        setFeedback('That group name is already taken. Try something more distinct.');
+      } else if (error instanceof GroupCapacityExceededError) {
+        setFeedback('You have reached your group quota. Purchase additional capacity to continue.');
+      } else if (error instanceof InactiveSubscriptionError) {
+        setFeedback('An active subscription is required before creating a group.');
+      } else {
+        setFeedback('We could not save the group. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -108,6 +157,31 @@ const CreateGroupForm = () => {
           />
         </div>
         <div className="grid" style={{ gap: '0.75rem' }}>
+          <label style={{ fontWeight: 600 }}>Monthly group fee (USD)</label>
+          <input
+            type="number"
+            min={0}
+            step={0.01}
+            value={
+              values.monthlyFeeCents > 0
+                ? (values.monthlyFeeCents / 100).toFixed(2).replace(/\.00$/, '')
+                : ''
+            }
+            placeholder="25"
+            onChange={(event) => {
+              const rawValue = Number(event.target.value);
+              if (Number.isNaN(rawValue) || rawValue < 0) {
+                handleChange('monthlyFeeCents', 0);
+              } else {
+                handleChange('monthlyFeeCents', Math.round(rawValue * 100));
+              }
+            }}
+          />
+          <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+            Members will see this fee when they join your group.
+          </span>
+        </div>
+        <div className="grid" style={{ gap: '0.75rem' }}>
           <label style={{ fontWeight: 600 }}>Members (comma separated)</label>
           <textarea
             rows={3}
@@ -142,8 +216,23 @@ const CreateGroupForm = () => {
             onChange={(event) => handleChange('logoImage', event.target.value || undefined)}
           />
         </div>
+        <div className="grid" style={{ gap: '0.75rem' }}>
+          <label style={{ fontWeight: 600 }}>Membership screening</label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.95rem' }}>
+            <input
+              type="checkbox"
+              checked={values.membershipScreeningEnabled}
+              onChange={(event) => handleChange('membershipScreeningEnabled', event.target.checked)}
+            />
+            Require owners to review join requests before members are added.
+          </label>
+        </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <button className="primary" type="submit" disabled={!isValid || isSubmitting || !canCreateGroup}>
+          <button
+            className="primary"
+            type="submit"
+            disabled={!isValid || isSubmitting || !canCreateGroup || !hasGroupCapacity || isCountingGroups}
+          >
             {isSubmitting ? 'Creating...' : 'Create group'}
           </button>
           {!profile && (
@@ -154,6 +243,18 @@ const CreateGroupForm = () => {
           {profile && !canCreateGroup && (
             <span style={{ color: '#b45309', fontSize: '0.9rem' }}>
               Activate your subscription to create new groups for your community.
+            </span>
+          )}
+          {profile && groupQuota > 0 && (
+            <span style={{ color: hasGroupCapacity ? '#0f766e' : '#b91c1c', fontSize: '0.9rem' }}>
+              {isCountingGroups
+                ? 'Checking your available group slots…'
+                : `You are using ${ownedGroupCount} of ${groupQuota} included groups.`}
+            </span>
+          )}
+          {profile && !hasGroupCapacity && (
+            <span style={{ color: '#b91c1c', fontSize: '0.9rem' }}>
+              Purchase additional capacity from the billing portal to create more groups.
             </span>
           )}
           <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
