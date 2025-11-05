@@ -1,10 +1,13 @@
 import { Link, NavLink } from 'react-router-dom';
 import type { PropsWithChildren } from 'react';
+import useAuth from '../hooks/useAuth';
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   isActive ? { color: '#38bdf8' } : undefined;
 
 const Layout = ({ children }: PropsWithChildren) => {
+  const { profile, logout } = useAuth();
+
   return (
     <div>
       <header className="layout-header">
@@ -25,7 +28,33 @@ const Layout = ({ children }: PropsWithChildren) => {
             >
               Firestore guide
             </a>
+            {profile && (profile.role === 'organizer' || profile.role === 'admin') ? (
+              <NavLink to="/organizer" style={navLinkClass}>
+                Organizer tools
+              </NavLink>
+            ) : null}
+            {profile && profile.role === 'admin' ? (
+              <NavLink to="/admin" style={navLinkClass}>
+                Admin
+              </NavLink>
+            ) : null}
           </nav>
+          <div className="nav-actions">
+            {profile ? (
+              <>
+                <NavLink to="/profile" style={navLinkClass}>
+                  {profile.displayName ?? profile.contactEmail}
+                </NavLink>
+                <button type="button" className="ghost" onClick={() => void logout()}>
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <NavLink to="/login" style={navLinkClass}>
+                Sign in
+              </NavLink>
+            )}
+          </div>
         </div>
       </header>
       <main>
