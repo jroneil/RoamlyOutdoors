@@ -1,4 +1,11 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import {
+  doc,
+  getDoc,
+  onSnapshot,
+  setDoc,
+  type DocumentReference,
+  type DocumentSnapshot
+} from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { db } from '../firebase/firebaseConfig';
 import type { AppUser, BillingProfile, UserDTO } from '../types/user';
@@ -66,11 +73,14 @@ export const subscribeToUserProfile = (
   firebaseUser: User,
   callback: (profile: AppUser) => void
 ) => {
-  const ref = doc(db, USERS_COLLECTION, firebaseUser.uid);
-  
-  return onSnapshot(ref, (snapshot) => {
+  const ref = doc(db, USERS_COLLECTION, firebaseUser.uid) as DocumentReference<UserDTO>;
+
+  return onSnapshot(ref, (snapshot: DocumentSnapshot<UserDTO>) => {
     if (snapshot.exists()) {
-      const data = snapshot.data() as UserDTO;
+      const data = snapshot.data();
+      if (!data) {
+        return;
+      }
       const profile = toAppUser(firebaseUser.uid, data, firebaseUser);
       callback(profile);
     }
