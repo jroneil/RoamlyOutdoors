@@ -33,6 +33,11 @@ const Layout = ({ children }: PropsWithChildren) => {
                 Organizer tools
               </NavLink>
             ) : null}
+            {profile ? (
+              <NavLink to="/billing" style={navLinkClass}>
+                Billing
+              </NavLink>
+            ) : null}
             {profile && profile.role === 'admin' ? (
               <NavLink to="/admin" style={navLinkClass}>
                 Admin

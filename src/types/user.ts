@@ -7,12 +7,24 @@ export type SubscriptionStatus =
   | 'canceled'
   | 'none';
 
+export interface PlanEntitlements {
+  maxEventsPerMonth: number;
+  teamSeats: number;
+  supportLevel: 'community' | 'priority' | 'concierge';
+}
+
 export interface BillingProfile {
   stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
   subscriptionStatus: SubscriptionStatus;
   packageName?: string;
-  renewalDate?: string;
+  planId?: string | null;
+  renewalDate?: string | null;
   managedBy?: 'stripe' | 'manual';
+  entitlements?: PlanEntitlements | null;
+  lastInvoiceStatus?: string | null;
+  lastInvoiceUrl?: string | null;
+  lastPaymentError?: string | null;
 }
 
 export interface UserDTO {
@@ -31,7 +43,10 @@ export interface AppUser extends UserDTO {
 }
 
 export const DEFAULT_BILLING_PROFILE: BillingProfile = {
-  subscriptionStatus: 'none'
+  subscriptionStatus: 'none',
+  managedBy: 'manual',
+  renewalDate: null,
+  entitlements: null
 };
 
 export const DEFAULT_USER_DTO: UserDTO = {

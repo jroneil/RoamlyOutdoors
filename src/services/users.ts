@@ -1,7 +1,7 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { db } from '../firebase/firebaseConfig';
-import type { AppUser, UserDTO } from '../types/user';
+import type { AppUser, BillingProfile, UserDTO } from '../types/user';
 import { DEFAULT_USER_DTO } from '../types/user';
 
 const USERS_COLLECTION = 'users';
@@ -47,4 +47,8 @@ export const updateUserProfile = async (uid: string, payload: Partial<UserDTO>) 
     },
     { merge: true }
   );
+};
+
+export const updateUserBillingProfile = async (uid: string, billing: Partial<BillingProfile>) => {
+  await updateUserProfile(uid, { billing } as Partial<UserDTO>);
 };
