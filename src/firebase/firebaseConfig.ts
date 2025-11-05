@@ -1,4 +1,5 @@
 import { initializeApp } from 'firebase/app';
+import { browserLocalPersistence, getAuth, setPersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 type FirebaseConfigKey =
@@ -29,4 +30,8 @@ const firebaseConfig = {
 };
 
 export const firebaseApp = initializeApp(firebaseConfig);
+export const auth = getAuth(firebaseApp);
 export const db = getFirestore(firebaseApp);
+
+// Ensure that authentication sessions persist even after a reload.
+void setPersistence(auth, browserLocalPersistence);
