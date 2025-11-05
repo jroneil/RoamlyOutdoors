@@ -52,7 +52,11 @@ const ProfilePage = () => {
         </dl>
       </section>
 
-      <BillingSummary billing={profile.billing} />
+      <BillingSummary
+        billing={profile.billing}
+        userId={profile.uid}
+        contactEmail={profile.contactEmail}
+      />
       <div className="card profile-card profile-card__actions">
         <Link to="/billing" className="primary-link">
           Go to billing portal
