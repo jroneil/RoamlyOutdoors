@@ -33,6 +33,23 @@ const mapDocToEvent = (snapshot: QuerySnapshot<DocumentData>) =>
       return String(value);
     };
 
+    const feeAmountCents =
+      typeof data.feeAmountCents === 'number' && Number.isFinite(data.feeAmountCents)
+        ? Math.max(0, Math.round(data.feeAmountCents))
+        : null;
+    const feeCurrency =
+      feeAmountCents && typeof data.feeCurrency === 'string' && data.feeCurrency.trim()
+        ? data.feeCurrency.trim().toUpperCase()
+        : null;
+    const feeDescription =
+      feeAmountCents && typeof data.feeDescription === 'string' && data.feeDescription.trim()
+        ? data.feeDescription.trim()
+        : null;
+    const feeDisclosure =
+      feeAmountCents && typeof data.feeDisclosure === 'string' && data.feeDisclosure.trim()
+        ? data.feeDisclosure.trim()
+        : null;
+
     return {
       id: doc.id,
       title: data.title ?? '',
@@ -48,6 +65,11 @@ const mapDocToEvent = (snapshot: QuerySnapshot<DocumentData>) =>
       groupId: data.groupId ?? '',
       groupTitle: data.groupTitle ?? '',
       createdAt: toIso(data.createdAt),
+      createdById: typeof data.createdById === 'string' ? data.createdById : undefined,
+      feeAmountCents,
+      feeCurrency,
+      feeDescription,
+      feeDisclosure,
       isVisible: data.isVisible !== false,
       hiddenReason: data.hiddenReason ?? null,
       hiddenAt: data.hiddenAt ? toIso(data.hiddenAt) : null

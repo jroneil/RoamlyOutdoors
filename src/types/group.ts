@@ -14,6 +14,7 @@ export interface Group {
   description: string;
   ownerName: string;
   ownerId?: string;
+  organizerIds: string[];
   members: string[];
   organizers: string[];
   bannerImage?: string;
@@ -34,7 +35,7 @@ export type GroupFormValues = Omit<
   Group,
   | 'id'
   | 'members'
-  | 'organizers'
+  | 'organizerIds'
   | 'createdAt'
   | 'subscriptionStatus'
   | 'subscriptionExpiredAt'
