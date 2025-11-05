@@ -1,6 +1,7 @@
 import {
   GoogleAuthProvider,
   type NextOrObserver,
+  type Unsubscribe,
   type User,
   browserLocalPersistence,
   onAuthStateChanged,
@@ -11,7 +12,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '../firebase/firebaseConfig';
 import type { AppUser } from '../types/user';
-import { getOrCreateUserProfile } from './users';
+import { getOrCreateUserProfile, subscribeToUserProfile } from './users';
 
 type AuthStateChange = {
   firebaseUser: User | null;
@@ -41,7 +42,18 @@ export const logout = async () => {
 export const subscribeToAuthChanges = (
   listener: (state: AuthStateChange) => void | Promise<void>
 ) => {
+  let profileUnsubscribe: Unsubscribe | null = null;
+
+  const cleanupProfileSubscription = () => {
+    if (profileUnsubscribe) {
+      profileUnsubscribe();
+      profileUnsubscribe = null;
+    }
+  };
+
   const handleChange: AuthObserver = async (firebaseUser) => {
+    cleanupProfileSubscription();
+
     if (!firebaseUser) {
       listener({ firebaseUser: null, profile: null });
       return;
@@ -50,11 +62,20 @@ export const subscribeToAuthChanges = (
     try {
       const profile = await getOrCreateUserProfile(firebaseUser);
       listener({ firebaseUser, profile });
+
+      profileUnsubscribe = subscribeToUserProfile(firebaseUser, (updatedProfile) => {
+        listener({ firebaseUser, profile: updatedProfile });
+      });
     } catch (error) {
       console.error(error);
       listener({ firebaseUser, profile: null });
     }
   };
 
-  return onAuthStateChanged(auth, handleChange, console.error);
+  const unsubscribeAuth = onAuthStateChanged(auth, handleChange, console.error);
+
+  return () => {
+    cleanupProfileSubscription();
+    unsubscribeAuth();
+  };
 };

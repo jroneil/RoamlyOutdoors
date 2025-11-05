@@ -3,6 +3,11 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { db } from '../firebase/firebaseConfig';
 import type { EventFormValues } from '../types/event';
 import type { Group } from '../types/group';
+import useAuth from '../hooks/useAuth';
+import {
+  InsufficientCreditsError,
+  consumeCreditsForEventPublish
+} from '../services/billing';
 
 const getDefaultValues = (): EventFormValues => ({
   title: '',
@@ -28,6 +33,8 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError }: CreateEventFo
   const [values, setValues] = useState<EventFormValues>(getDefaultValues());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [creditFeedback, setCreditFeedback] = useState<{ message: string; tone: 'success' | 'warning' | 'info' } | null>(null);
+  const { profile } = useAuth();
 
   useEffect(() => {
     if (!values.groupId && groups.length > 0) {
@@ -54,7 +61,33 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError }: CreateEventFo
     if (isSubmitting || !isValid) return;
     setIsSubmitting(true);
     setFeedback(null);
+    setCreditFeedback(null);
     try {
+      if (!profile) {
+        throw new Error('You must be signed in to publish events.');
+      }
+
+      const creditResult = await consumeCreditsForEventPublish(profile.uid);
+
+      if (creditResult.autoPurchaseTriggered) {
+        setCreditFeedback({
+          tone: 'info',
+          message:
+            'Auto-purchase triggered — additional credits were added to keep publishing uninterrupted.'
+        });
+      } else if (creditResult.reminderTriggered) {
+        setCreditFeedback({
+          tone: 'warning',
+          message:
+            'Your credit balance is low. We emailed a reminder so you can top up before the next event.'
+        });
+      } else {
+        setCreditFeedback({
+          tone: 'success',
+          message: `Event credit applied. Remaining balance: ${creditResult.balance} credits.`
+        });
+      }
+
       const selectedGroup = groups.find((group) => group.id === values.groupId);
       if (!selectedGroup) {
         throw new Error('Please select a group for this event.');
@@ -76,8 +109,20 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError }: CreateEventFo
       setValues(getDefaultValues());
       setFeedback('Event created successfully! You can see it in the list above.');
     } catch (error) {
-      console.error(error);
-      setFeedback('Unable to create the event right now. Please try again.');
+      if (error instanceof InsufficientCreditsError) {
+        setCreditFeedback({
+          tone: 'warning',
+          message:
+            'You have run out of publishing credits. Visit the billing tab to purchase more before trying again.'
+        });
+        setFeedback(null);
+      } else if (error instanceof Error) {
+        console.error(error);
+        setFeedback(error.message || 'Unable to create the event right now. Please try again.');
+      } else {
+        console.error(error);
+        setFeedback('Unable to create the event right now. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -223,6 +268,21 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError }: CreateEventFo
           <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
             Events are stored in your Firebase project under the <strong>events</strong> collection.
           </span>
+          {creditFeedback && (
+            <span
+              style={{
+                color:
+                  creditFeedback.tone === 'success'
+                    ? '#047857'
+                    : creditFeedback.tone === 'info'
+                      ? '#1d4ed8'
+                      : '#b45309',
+                fontSize: '0.9rem'
+              }}
+            >
+              {creditFeedback.message}
+            </span>
+          )}
           {groups.length === 0 && !isLoadingGroups && (
             <span style={{ fontSize: '0.85rem', color: '#b45309' }}>
               Add a group before creating an event — every adventure belongs to a crew.

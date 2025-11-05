@@ -1,8 +1,9 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { db } from '../firebase/firebaseConfig';
 import type { AppUser, UserDTO } from '../types/user';
-import { DEFAULT_USER_DTO } from '../types/user';
+import { DEFAULT_BILLING_PROFILE, DEFAULT_USER_DTO } from '../types/user';
+import { createDefaultCreditLedger, createDefaultCreditUsage } from '../types/billing';
 
 const USERS_COLLECTION = 'users';
 
@@ -22,7 +23,11 @@ export const getOrCreateUserProfile = async (firebaseUser: User): Promise<AppUse
     const nowIso = new Date().toISOString();
     const freshUser: UserDTO = {
       ...DEFAULT_USER_DTO,
-      billing: { ...DEFAULT_USER_DTO.billing },
+      billing: {
+        ...DEFAULT_BILLING_PROFILE,
+        credits: createDefaultCreditLedger(),
+        usage: createDefaultCreditUsage()
+      },
       contactEmail: firebaseUser.email ?? '',
       createdAt: nowIso,
       updatedAt: nowIso
@@ -46,5 +51,29 @@ export const updateUserProfile = async (uid: string, payload: Partial<UserDTO>) 
       updatedAt: nowIso
     },
     { merge: true }
+  );
+};
+
+export const subscribeToUserProfile = (
+  firebaseUser: User,
+  callback: (profile: AppUser) => void,
+  onError?: (error: Error) => void
+) => {
+  const ref = doc(db, USERS_COLLECTION, firebaseUser.uid);
+
+  return onSnapshot(
+    ref,
+    (snapshot) => {
+      if (!snapshot.exists()) {
+        return;
+      }
+
+      const data = snapshot.data() as UserDTO;
+      callback(toAppUser(firebaseUser.uid, data, firebaseUser));
+    },
+    (error) => {
+      console.error('Failed to subscribe to user profile', error);
+      onError?.(error as Error);
+    }
   );
 };

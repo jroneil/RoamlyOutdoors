@@ -51,7 +51,7 @@ const ProfilePage = () => {
         </dl>
       </section>
 
-      <BillingSummary billing={profile.billing} />
+      <BillingSummary billing={profile.billing} userId={profile.uid} contactEmail={profile.contactEmail} />
     </div>
   );
 };

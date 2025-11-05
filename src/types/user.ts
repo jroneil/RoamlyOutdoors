@@ -1,3 +1,6 @@
+import type { CreditLedger, CreditUsageSnapshot } from './billing';
+import { createDefaultCreditLedger, createDefaultCreditUsage } from './billing';
+
 export type UserRole = 'member' | 'organizer' | 'admin';
 
 export type SubscriptionStatus =
@@ -13,6 +16,8 @@ export interface BillingProfile {
   packageName?: string;
   renewalDate?: string;
   managedBy?: 'stripe' | 'manual';
+  credits: CreditLedger;
+  usage: CreditUsageSnapshot;
 }
 
 export interface UserDTO {
@@ -31,7 +36,9 @@ export interface AppUser extends UserDTO {
 }
 
 export const DEFAULT_BILLING_PROFILE: BillingProfile = {
-  subscriptionStatus: 'none'
+  subscriptionStatus: 'none',
+  credits: createDefaultCreditLedger(),
+  usage: createDefaultCreditUsage()
 };
 
 export const DEFAULT_USER_DTO: UserDTO = {
