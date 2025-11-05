@@ -1,52 +1,23 @@
-export interface CreditBundle {
+import type { PlanEntitlements } from './user';
+
+export interface BillingPlan {
   id: string;
   name: string;
-  credits: number;
-  priceCents: number;
+  description: string;
+  unitAmount: number;
   currency: string;
-  highlight?: string;
+  interval: 'month' | 'year';
+  entitlements: PlanEntitlements;
 }
 
-export type CreditReplenishmentMode = 'auto' | 'reminder';
-
-export interface CreditReplenishmentSettings {
-  mode: CreditReplenishmentMode;
-  threshold: number;
-  bundleId: string;
+export interface CheckoutSessionResponse {
+  url: string;
 }
 
-export interface CreditLedger {
-  balance: number;
-  lastUpdated: string;
-  lowBalanceThreshold: number;
-  lowBalanceEmailSentAt?: string | null;
-  lastAutoPurchaseAt?: string | null;
-  replenishment: CreditReplenishmentSettings;
+export interface PortalSessionResponse {
+  url: string;
 }
 
-export interface CreditUsageSnapshot {
-  monthlyLimit: number;
-  monthlyUsed: number;
-  cycleRenewsOn: string;
+export interface BillingPlansResponse {
+  plans: BillingPlan[];
 }
-
-export const createDefaultCreditReplenishment = (): CreditReplenishmentSettings => ({
-  mode: 'reminder',
-  threshold: 3,
-  bundleId: 'bundle_starter'
-});
-
-export const createDefaultCreditLedger = (): CreditLedger => ({
-  balance: 5,
-  lastUpdated: new Date().toISOString(),
-  lowBalanceThreshold: 3,
-  lowBalanceEmailSentAt: null,
-  lastAutoPurchaseAt: null,
-  replenishment: createDefaultCreditReplenishment()
-});
-
-export const createDefaultCreditUsage = (): CreditUsageSnapshot => ({
-  monthlyLimit: 20,
-  monthlyUsed: 0,
-  cycleRenewsOn: new Date().toISOString()
-});
