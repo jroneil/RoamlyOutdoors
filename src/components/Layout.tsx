@@ -1,6 +1,7 @@
 import { Link, NavLink } from 'react-router-dom';
 import type { PropsWithChildren } from 'react';
 import useAuth from '../hooks/useAuth';
+import DeveloperModePanel from './dev/DeveloperModePanel';
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   isActive ? { color: '#38bdf8' } : undefined;
@@ -68,6 +69,7 @@ const Layout = ({ children }: PropsWithChildren) => {
       <footer>
         Crafted for outdoor explorers. Manage your community meetups with ease.
       </footer>
+      <DeveloperModePanel />
     </div>
   );
 };

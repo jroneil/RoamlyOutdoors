@@ -11,6 +11,12 @@ import type { User } from 'firebase/auth';
 import { loginWithEmail, loginWithGoogle, logout, subscribeToAuthChanges } from '../services/auth';
 import { getOrCreateUserProfile } from '../services/users';
 import type { AppUser } from '../types/user';
+import {
+  canUseDeveloperMode,
+  getDeveloperProfile,
+  isDeveloperModeEnabled,
+  subscribeToDeveloperModeChanges
+} from '../utils/developerMode';
 
 interface AuthState {
   isLoading: boolean;
@@ -35,8 +41,32 @@ const initialState: AuthState = {
 
 export const AuthProvider = ({ children }: PropsWithChildren) => {
   const [state, setState] = useState<AuthState>(initialState);
+  const [developerModeEnabled, setDeveloperModeEnabled] = useState(() =>
+    canUseDeveloperMode() ? isDeveloperModeEnabled() : false
+  );
 
   useEffect(() => {
+    if (!canUseDeveloperMode()) {
+      return;
+    }
+
+    const unsubscribe = subscribeToDeveloperModeChanges(() => {
+      setDeveloperModeEnabled(isDeveloperModeEnabled());
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (developerModeEnabled) {
+      setState({ isLoading: false, firebaseUser: null, profile: getDeveloperProfile() });
+      return;
+    }
+
+    setState((prev) => ({ ...prev, isLoading: true }));
+
     const unsubscribe = subscribeToAuthChanges(({ firebaseUser, profile }) => {
       setState({ isLoading: false, firebaseUser, profile });
     });
@@ -44,7 +74,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     return () => {
       unsubscribe();
     };
-  }, []);
+  }, [developerModeEnabled]);
 
   const handleEmailLogin = useCallback(async (email: string, password: string) => {
     await loginWithEmail(email, password);
