@@ -44,6 +44,24 @@ export interface CreditBundle {
   isRecommended?: boolean;
 }
 
+export type CreditConsumptionReason = 'event_publish';
+
+export interface CreditConsumptionRequest {
+  userId: string;
+  amount: number;
+  reason: CreditConsumptionReason;
+}
+
+export interface CreditConsumptionResult {
+  balance: number;
+  consumed: number;
+  autoPurchaseTriggered: boolean;
+  autoPurchaseBundleId?: string | null;
+  autoPurchaseCredits?: number | null;
+  reminderTriggered: boolean;
+  reminderSentAt?: string | null;
+}
+
 export const createDefaultCreditReplenishmentSettings = (): CreditReplenishmentSettings => ({
   mode: 'manual',
   threshold: 5,
