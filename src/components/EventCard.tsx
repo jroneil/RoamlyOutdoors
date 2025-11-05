@@ -22,10 +22,23 @@ const formatDateRange = (startIso: string, endIso: string) => {
   return `${format(start, 'MMM d')} → ${format(end, 'MMM d')}`;
 };
 
+const formatCurrency = (amountCents: number, currency = 'USD') =>
+  new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: amountCents % 100 === 0 ? 0 : 2
+  }).format(amountCents / 100);
+
 const EventCard = ({ event, group }: EventCardProps) => {
   const availableSpots = Math.max(event.capacity - event.attendees.length, 0);
   const groupName = (group?.title ?? event.groupTitle ?? '').trim();
   const ownerName = group?.ownerName ?? event.hostName;
+  const feeLabel =
+    event.feeAmountCents && event.feeCurrency
+      ? `Fee: ${formatCurrency(event.feeAmountCents, event.feeCurrency)}${
+          event.feeDescription ? ` • ${event.feeDescription}` : ''
+        }`
+      : 'Free to attend';
 
   return (
     <article className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.3rem' }}>
@@ -96,12 +109,16 @@ const EventCard = ({ event, group }: EventCardProps) => {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
         <span className="tag">{event.location}</span>
         <span className="tag light">Hosted by {event.hostName}</span>
+        <span className="tag light">{feeLabel}</span>
         {event.tags.map((tag) => (
           <span className="badge" key={tag}>
             #{tag}
           </span>
         ))}
       </div>
+      {event.feeDisclosure && (
+        <p style={{ color: '#0f172a', fontSize: '0.85rem' }}>{event.feeDisclosure}</p>
+      )}
       <footer style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ color: '#0f172a', fontWeight: 600 }}>
           {availableSpots > 0 ? `${availableSpots} spots left` : 'Fully booked'}

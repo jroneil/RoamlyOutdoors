@@ -61,6 +61,9 @@ const mapSnapshot = (snapshot: QuerySnapshot<DocumentData>): Group[] =>
       description: data.description ?? '',
       ownerName: data.ownerName ?? '',
       ownerId: data.ownerId ?? undefined,
+      organizerIds: Array.isArray(data.organizerIds)
+        ? data.organizerIds.filter((value) => typeof value === 'string')
+        : [],
       members: Array.isArray(data.members) ? data.members : [],
       bannerImage: data.bannerImage ?? undefined,
       logoImage: data.logoImage ?? undefined,

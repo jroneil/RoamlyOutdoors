@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "test": "node --test",
+    "test": "rm -rf build-test && tsc -p tsconfig.test.json && node --test api/__tests__/**/*.test.js build-test/utils/__tests__/eventRules.test.js",
     "preview": "vite preview",
     "lint": "eslint src --ext .ts,.tsx",
     "server": "node api/server.js"
