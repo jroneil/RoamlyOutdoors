@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import BillingSummary from '../components/profile/BillingSummary';
 import LoadingState from '../components/common/LoadingState';
 import useAuth from '../hooks/useAuth';
@@ -52,6 +53,11 @@ const ProfilePage = () => {
       </section>
 
       <BillingSummary billing={profile.billing} />
+      <div className="card profile-card profile-card__actions">
+        <Link to="/billing" className="primary-link">
+          Go to billing portal
+        </Link>
+      </div>
     </div>
   );
 };

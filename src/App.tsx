@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import OrganizerDashboard from './pages/OrganizerDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import BillingOverviewPage from './pages/billing/BillingOverviewPage';
 
 const App = () => {
   return (
@@ -20,6 +21,14 @@ const App = () => {
           element={(
             <RoleProtectedRoute>
               <ProfilePage />
+            </RoleProtectedRoute>
+          )}
+        />
+        <Route
+          path="/billing"
+          element={(
+            <RoleProtectedRoute>
+              <BillingOverviewPage />
             </RoleProtectedRoute>
           )}
         />
