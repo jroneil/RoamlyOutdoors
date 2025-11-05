@@ -31,7 +31,10 @@ const mapSnapshot = (snapshot: DocumentSnapshot<DocumentData>): Event | null => 
     bannerImage: data.bannerImage ?? undefined,
     groupId: data.groupId ?? '',
     groupTitle: data.groupTitle ?? '',
-    createdAt: toIso(data.createdAt)
+    createdAt: toIso(data.createdAt),
+    isVisible: data.isVisible !== false,
+    hiddenReason: data.hiddenReason ?? null,
+    hiddenAt: data.hiddenAt ? toIso(data.hiddenAt) : null
   };
 };
 

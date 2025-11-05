@@ -56,6 +56,8 @@ const EventDetailsPage = () => {
   }
 
   const availableSpots = Math.max(event.capacity - event.attendees.length, 0);
+  const hiddenBecauseSubscription = event.hiddenReason === 'subscription_expired';
+  const isHidden = !event.isVisible;
 
   const handleRsvp = async (formEvent: FormEvent<HTMLFormElement>) => {
     formEvent.preventDefault();
@@ -98,6 +100,19 @@ const EventDetailsPage = () => {
           <button className="tag" type="button" onClick={() => navigate(-1)}>
             ← Back
           </button>
+          {isHidden && (
+            <div
+              className="tag"
+              style={{
+                background: hiddenBecauseSubscription ? 'rgba(180, 83, 9, 0.12)' : 'rgba(15, 23, 42, 0.1)',
+                color: hiddenBecauseSubscription ? '#9a3412' : '#0f172a'
+              }}
+            >
+              {hiddenBecauseSubscription
+                ? 'This event is hidden until the organizer renews their subscription.'
+                : 'This event is currently hidden from attendees.'}
+            </div>
+          )}
           {event.bannerImage && (
             <img
               src={event.bannerImage}

@@ -47,7 +47,10 @@ const mapDocToEvent = (snapshot: QuerySnapshot<DocumentData>) =>
       bannerImage: data.bannerImage ?? undefined,
       groupId: data.groupId ?? '',
       groupTitle: data.groupTitle ?? '',
-      createdAt: toIso(data.createdAt)
+      createdAt: toIso(data.createdAt),
+      isVisible: data.isVisible !== false,
+      hiddenReason: data.hiddenReason ?? null,
+      hiddenAt: data.hiddenAt ? toIso(data.hiddenAt) : null
     } satisfies Event;
   });
 
@@ -79,6 +82,7 @@ export const useEvents = ({ search = '', tag = '', filter = 'upcoming' }: UseEve
   const filteredEvents = useMemo(() => {
     const now = new Date();
     return events
+      .filter((event) => event.isVisible)
       .filter((event) => {
         if (!event.startDate) return true;
         const start = new Date(event.startDate);
