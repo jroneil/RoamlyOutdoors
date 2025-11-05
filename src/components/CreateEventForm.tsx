@@ -45,6 +45,7 @@ const CreateEventForm = () => {
         tags: values.tags.map((tag) => tag.trim()).filter(Boolean),
         startDate: new Date(values.startDate),
         endDate: values.endDate ? new Date(values.endDate) : null,
+        bannerImage: values.bannerImage?.trim() || null,
         attendees: [],
         createdAt: serverTimestamp()
       };
