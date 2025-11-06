@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import useDashboardActivity from '../../hooks/useDashboardActivity';
 import type {
   DashboardEventSummary,
@@ -6,6 +7,7 @@ import type {
   DashboardGroupRole,
   DashboardEventStatus
 } from '../../services/dashboardContentService';
+import useAuth from '../../hooks/useAuth';
 
 const VIEW_STORAGE_KEY = 'roamly:dashboard-activity-view';
 
@@ -98,6 +100,36 @@ const ViewToggle = ({ mode, onChange }: { mode: ViewMode; onChange: (mode: ViewM
   </div>
 );
 
+const GroupQuickActions = ({
+  group,
+  align = 'flex-start'
+}: {
+  group: DashboardGroupSummary;
+  align?: 'flex-start' | 'flex-end';
+}) => {
+  const canCreateEvent = group.role === 'owner' || group.role === 'organizer';
+  const canEditGroup = group.role === 'owner';
+
+  if (!canCreateEvent && !canEditGroup) {
+    return null;
+  }
+
+  return (
+    <div className="dashboard-activity-actions" style={{ justifyContent: align }}>
+      {canCreateEvent ? (
+        <Link to={`/groups/${group.id}/events/create`} className="primary-link dashboard-activity-action">
+          Create event
+        </Link>
+      ) : null}
+      {canEditGroup ? (
+        <Link to={`/groups/${group.id}/edit`} className="secondary-link dashboard-activity-action">
+          Edit group
+        </Link>
+      ) : null}
+    </div>
+  );
+};
+
 const GroupCards = ({ groups }: { groups: DashboardGroupSummary[] }) => (
   <div className="dashboard-activity-grid">
     {groups.map((group) => (
@@ -125,6 +157,7 @@ const GroupCards = ({ groups }: { groups: DashboardGroupSummary[] }) => (
               <dd>{group.nextEvent ? formatDate(group.nextEvent.startDate, { dateStyle: 'medium' }) : 'Not scheduled'}</dd>
             </div>
           </dl>
+          <GroupQuickActions group={group} />
         </div>
       </article>
     ))}
@@ -146,6 +179,7 @@ const GroupList = ({ groups }: { groups: DashboardGroupSummary[] }) => (
           <span>{group.memberCount.toLocaleString()} members</span>
           <span>{group.nextEvent ? `Next: ${formatDate(group.nextEvent.startDate, { dateStyle: 'medium' })}` : 'No upcoming events'}</span>
         </div>
+        <GroupQuickActions group={group} align="flex-end" />
       </article>
     ))}
   </div>
@@ -210,6 +244,7 @@ const EmptyState = ({
 const YourGroupsAndEvents = ({ userId }: { userId: string | null | undefined }) => {
   const { groups, events, isLoading, error } = useDashboardActivity(userId);
   const [viewMode, setViewMode] = useStoredViewMode();
+  const { profile } = useAuth();
 
   const sortedGroups = useMemo(() => sortGroups(groups), [groups]);
   const hasGroups = sortedGroups.length > 0;
@@ -282,7 +317,14 @@ const YourGroupsAndEvents = ({ userId }: { userId: string | null | undefined }) 
             Keep a pulse on membership growth and the adventures your community has lined up next.
           </p>
         </div>
-        <ViewToggle mode={viewMode} onChange={setViewMode} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {profile ? (
+            <Link to="/groups/create" className="primary-link">
+              Create group
+            </Link>
+          ) : null}
+          <ViewToggle mode={viewMode} onChange={setViewMode} />
+        </div>
       </header>
       {content}
     </section>
