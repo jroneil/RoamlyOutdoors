@@ -122,6 +122,61 @@ button.primary:hover {
   gap: 2.5rem;
 }
 
+.home-search {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(59, 130, 246, 0.08));
+  border-radius: 24px;
+  padding: clamp(1.25rem, 1rem + 1.5vw, 2rem);
+  display: grid;
+  gap: 1.5rem;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+}
+
+.home-search__field label {
+  font-weight: 600;
+  color: #0f172a;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.home-search__chips {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.home-search__chips-label {
+  font-weight: 600;
+  color: #475569;
+}
+
+.home-search__chips-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.home-search__chip {
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.home-search__chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.18);
+}
+
+.home-search__chip[data-active='true'] {
+  background: rgba(59, 130, 246, 0.24);
+  color: #1d4ed8;
+  box-shadow: 0 12px 30px rgba(59, 130, 246, 0.24);
+}
+
+.home-search__chip:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
 .section-title {
   font-size: clamp(1.6rem, 1.2rem + 1vw, 2.4rem);
   font-weight: 700;
@@ -365,6 +420,12 @@ button.primary:hover {
 .home-event-card footer {
   color: #475569;
   font-size: 0.95rem;
+}
+
+.home-event-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
 }
 
 .home-group-card {

@@ -21,6 +21,7 @@ type HomeEvent = {
   startDate: string;
   groupName: string;
   attendance: string;
+  tags?: string[];
 };
 
 type HomeGroup = {
@@ -76,7 +77,8 @@ const sampleUserEvents: HomeEvent[] = [
     location: 'Mount Rainier National Park, WA',
     startDate: '2024-07-12T05:30:00Z',
     groupName: 'Seattle Alpine Collective',
-    attendance: '5 of 12 spots filled'
+    attendance: '5 of 12 spots filled',
+    tags: ['mountaineering', 'climbing']
   },
   {
     id: 'event-2',
@@ -84,7 +86,8 @@ const sampleUserEvents: HomeEvent[] = [
     location: 'Lake Crescent, WA',
     startDate: '2024-07-19T18:00:00Z',
     groupName: 'Puget Sound Kayakers',
-    attendance: '12 RSVPs'
+    attendance: '12 RSVPs',
+    tags: ['paddling', 'campfire']
   },
   {
     id: 'event-3',
@@ -92,7 +95,8 @@ const sampleUserEvents: HomeEvent[] = [
     location: 'Cougar Mountain, WA',
     startDate: '2024-07-27T08:00:00Z',
     groupName: 'Issaquah Trail Stewards',
-    attendance: '8 volunteers confirmed'
+    attendance: '8 volunteers confirmed',
+    tags: ['stewardship', 'trail-running']
   }
 ];
 

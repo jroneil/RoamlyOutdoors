@@ -16,6 +16,15 @@ const HomeEventCard = ({ event }: HomeEventCardProps) => {
       </header>
       <p className="home-event-card__meta">{event.location}</p>
       <p className="home-event-card__group">Hosted by {event.groupName}</p>
+      {event.tags?.length ? (
+        <div className="home-event-card__tags">
+          {event.tags.map((tag) => (
+            <span key={tag} className="tag light">
+              #{tag.replace(/-/g, ' ')}
+            </span>
+          ))}
+        </div>
+      ) : null}
       <footer>{event.attendance}</footer>
     </article>
   );
