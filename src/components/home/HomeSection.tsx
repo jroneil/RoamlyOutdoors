@@ -1,15 +1,16 @@
 import { ReactNode } from 'react';
 
 type HomeSectionProps = {
+  id?: string;
   title: string;
   description?: string;
   action?: ReactNode;
   children: ReactNode;
 };
 
-const HomeSection = ({ title, description, action, children }: HomeSectionProps) => {
+const HomeSection = ({ id, title, description, action, children }: HomeSectionProps) => {
   return (
-    <section className="home-section card">
+    <section id={id} className="home-section card">
       <header className="home-section__header">
         <div>
           <h2>{title}</h2>
