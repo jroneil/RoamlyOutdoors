@@ -70,6 +70,8 @@ const HomePage = () => {
   );
 
   const filteredUserGroups = useMemo(() => filterGroups(userGroups), [filterGroups, userGroups]);
+  const hasAnyUserGroups = userGroups.length > 0;
+  const hasFilteredUserGroups = filteredUserGroups.length > 0;
   const filteredLocalGroups = useMemo(() => filterGroups(localGroups), [filterGroups, localGroups]);
 
   const handleTagToggle = (tag: string) => {
@@ -122,7 +124,7 @@ const HomePage = () => {
             <p className="home-loading">Loading your groups…</p>
           ) : error ? (
             <p className="home-error">{error}</p>
-          ) : filteredUserGroups.length ? (
+          ) : hasFilteredUserGroups ? (
             <div className="home-grid">
               {filteredUserGroups.map((group) => (
                 <HomeGroupCard key={group.id} group={group} />
@@ -130,14 +132,25 @@ const HomePage = () => {
             </div>
           ) : (
             <p className="home-empty">
-              {hasActiveFilters
-                ? 'No groups match your filters. Try broadening your search to see more of your crews.'
-                : "You&apos;re not linked to any groups yet. Create one or ask an organizer to add you."}
+              {!hasAnyUserGroups ? (
+                <>
+                  You haven&apos;t joined any groups yet.{' '}
+                  <a href="/home#discover-groups" className="home-section__link">
+                    Browse the discovery directory
+                  </a>{' '}
+                  to find your next crew.
+                </>
+              ) : hasActiveFilters ? (
+                'No groups match your filters. Try broadening your search to see more of your crews.'
+              ) : (
+                'No groups are visible right now. Try clearing your filters or refreshing your feed.'
+              )}
             </p>
           )}
         </HomeSection>
 
         <HomeSection
+          id="discover-groups"
           title="Local crews to check out"
           description="Discover nearby communities organizing adventures that match your interests."
         >
