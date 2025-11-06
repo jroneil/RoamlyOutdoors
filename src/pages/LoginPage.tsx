@@ -12,7 +12,7 @@ const LoginPage = () => {
 
   useEffect(() => {
     if (profile) {
-      navigate('/profile');
+      navigate('/home', { replace: true });
     }
   }, [navigate, profile]);
 

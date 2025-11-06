@@ -3,6 +3,7 @@ import Layout from './components/Layout';
 import RoleProtectedRoute from './components/auth/RoleProtectedRoute';
 import EventDetailsPage from './pages/EventDetailsPage';
 import HomePage from './pages/HomePage';
+import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import OrganizerDashboard from './pages/OrganizerDashboard';
@@ -13,7 +14,15 @@ const App = () => {
   return (
     <Layout>
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<LandingPage />} />
+        <Route
+          path="/home"
+          element={(
+            <RoleProtectedRoute redirectTo="/">
+              <HomePage />
+            </RoleProtectedRoute>
+          )}
+        />
         <Route path="/events/:eventId" element={<EventDetailsPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route
