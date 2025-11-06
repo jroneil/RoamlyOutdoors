@@ -1,50 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import HomeBanner from '../components/home/HomeBanner';
 import HomeEventCard from '../components/home/HomeEventCard';
 import HomeGroupCard from '../components/home/HomeGroupCard';
 import HomeSection from '../components/home/HomeSection';
+import GroupsNearYouSection from '../components/home/GroupsNearYouSection';
 import { useHomeContent } from '../hooks/useHomeContent';
 
 const HomePage = () => {
-  const { banner, userEvents, userGroups, localGroups, filters, isLoading, error } = useHomeContent();
-  const [search, setSearch] = useState('');
-  const [activity, setActivity] = useState('any');
-  const [distance, setDistance] = useState('25');
-
-  useEffect(() => {
-    if (filters.activities.length && !filters.activities.some((option) => option.value === activity)) {
-      setActivity(filters.activities[0].value);
-    }
-  }, [filters.activities, activity]);
-
-  useEffect(() => {
-    if (filters.distance.length && !filters.distance.some((option) => option.value === distance)) {
-      setDistance(filters.distance[0].value);
-    }
-  }, [filters.distance, distance]);
-
-  const filteredLocalGroups = useMemo(() => {
-    const maxDistance = distance === 'state' ? Infinity : Number(distance);
-
-    return localGroups.filter((group) => {
-      const matchesSearch = search
-        ? group.name.toLowerCase().includes(search.toLowerCase()) ||
-          [group.city, group.state].join(', ').toLowerCase().includes(search.toLowerCase())
-        : true;
-
-      const matchesActivity =
-        activity === 'any' || !group.activities?.length
-          ? true
-          : group.activities?.some((item) => item === activity);
-
-      const matchesDistance =
-        Number.isFinite(maxDistance) && typeof group.distanceMiles === 'number'
-          ? group.distanceMiles <= maxDistance
-          : true;
-
-      return matchesSearch && matchesActivity && matchesDistance;
-    });
-  }, [activity, distance, localGroups, search]);
+  const { banner, userEvents, userGroups, isLoading, error } = useHomeContent();
+  const memoizedUserGroups = useMemo(() => userGroups, [userGroups]);
+  const memoizedUserEvents = useMemo(() => userEvents, [userEvents]);
 
   return (
     <div className="home-page container">
@@ -60,9 +25,9 @@ const HomePage = () => {
             <p className="home-loading">Loading upcoming events…</p>
           ) : error ? (
             <p className="home-error">{error}</p>
-          ) : userEvents.length ? (
+          ) : memoizedUserEvents.length ? (
             <div className="home-grid home-grid--events">
-              {userEvents.map((event) => (
+              {memoizedUserEvents.map((event) => (
                 <HomeEventCard key={event.id} event={event} />
               ))}
             </div>
@@ -80,9 +45,9 @@ const HomePage = () => {
             <p className="home-loading">Loading your groups…</p>
           ) : error ? (
             <p className="home-error">{error}</p>
-          ) : userGroups.length ? (
+          ) : memoizedUserGroups.length ? (
             <div className="home-grid">
-              {userGroups.map((group) => (
+              {memoizedUserGroups.map((group) => (
                 <HomeGroupCard key={group.id} group={group} />
               ))}
             </div>
@@ -94,54 +59,10 @@ const HomePage = () => {
         </HomeSection>
 
         <HomeSection
-          title="Find something nearby"
-          description="Search local groups to join or collaborate with when you have extra capacity."
+          title="Groups Near You"
+          description="Share your location or search by postal code to discover crews organizing adventures nearby."
         >
-          <form className="home-filters" onSubmit={(event) => event.preventDefault()}>
-            <label className="home-filters__field">
-              <span>Search</span>
-              <input
-                type="search"
-                placeholder="Search by name or city"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-            </label>
-            <label className="home-filters__field">
-              <span>Activity</span>
-              <select value={activity} onChange={(event) => setActivity(event.target.value)}>
-                {filters.activities.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="home-filters__field">
-              <span>Within</span>
-              <select value={distance} onChange={(event) => setDistance(event.target.value)}>
-                {filters.distance.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </form>
-
-          {isLoading ? (
-            <p className="home-loading">Loading local groups…</p>
-          ) : error ? (
-            <p className="home-error">{error}</p>
-          ) : filteredLocalGroups.length ? (
-            <div className="home-grid">
-              {filteredLocalGroups.map((group) => (
-                <HomeGroupCard key={group.id} group={group} />
-              ))}
-            </div>
-          ) : (
-            <p className="home-empty">No groups match your filters yet. Try broadening your search.</p>
-          )}
+          <GroupsNearYouSection />
         </HomeSection>
       </div>
     </div>

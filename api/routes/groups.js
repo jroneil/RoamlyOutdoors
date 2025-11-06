@@ -10,6 +10,7 @@ import {
   MemberProfileMissingError,
   UnauthorizedGroupActionError
 } from '../services/groupMembership.js';
+import { getNearbyGroups } from '../services/nearbyGroups.js';
 
 const router = express.Router();
 
@@ -34,6 +35,40 @@ const mapErrorToStatus = (error) => {
   }
   return 500;
 };
+
+const parseNumber = (value) => {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+router.get('/nearby', (req, res) => {
+  const { lat, lng, postalCode, limit, radiusMiles } = req.query;
+
+  try {
+    const groups = getNearbyGroups({
+      latitude: parseNumber(lat),
+      longitude: parseNumber(lng),
+      postalCode,
+      limit: parseNumber(limit),
+      radiusMiles: parseNumber(radiusMiles)
+    });
+
+    res.json({ groups });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to load nearby groups.';
+    res.status(400).json({ error: message });
+  }
+});
 
 router.post('/:groupId/organizers', async (req, res) => {
   const { groupId } = req.params;

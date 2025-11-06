@@ -446,6 +446,141 @@ button.primary:hover {
   color: #2563eb;
 }
 
+.groups-near-you {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.groups-near-you__status,
+.groups-near-you__summary {
+  color: #475569;
+  font-size: 0.95rem;
+}
+
+.groups-near-you__summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.groups-near-you__summary {
+  font-weight: 600;
+}
+
+.groups-near-you__error {
+  color: #dc2626;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.groups-near-you__postal {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.groups-near-you__postal label {
+  display: grid;
+  gap: 0.4rem;
+  font-weight: 600;
+  color: #0f172a;
+  font-size: 0.95rem;
+}
+
+.groups-near-you__postal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.groups-near-you__controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.groups-near-you__controls select {
+  width: auto;
+  min-width: 160px;
+}
+
+.groups-near-you__grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+.nearby-group-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: 140px 1fr;
+  background: #fff;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+}
+
+.nearby-group-card__image {
+  background-size: cover;
+  background-position: center;
+}
+
+.nearby-group-card__body {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1.25rem 1.5rem 1.6rem;
+}
+
+.nearby-group-card__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.nearby-group-card__header h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.nearby-group-card__distance {
+  font-size: 0.9rem;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.nearby-group-card__location,
+.nearby-group-card__members,
+.nearby-group-card__activities {
+  color: #475569;
+  font-size: 0.95rem;
+}
+
+.nearby-group-card__activities {
+  font-size: 0.9rem;
+  color: #1d4ed8;
+}
+
+.nearby-group-card__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
+  color: #0f172a;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.nearby-group-card__stats span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
 .logo {
   display: flex;
   align-items: center;
