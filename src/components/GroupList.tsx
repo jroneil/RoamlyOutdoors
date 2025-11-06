@@ -41,10 +41,10 @@ const GroupList = ({ groups, isLoading, error, eventCountByGroup }: GroupListPro
 
     try {
       if (isOrganizer) {
-        await demoteGroupOrganizer({ groupId, ownerId: profile.uid, memberId });
+        await demoteGroupOrganizer({ groupId, memberId });
         setStatusByGroup((prev) => ({ ...prev, [groupId]: 'Organizer access removed.' }));
       } else {
-        await promoteGroupOrganizer({ groupId, ownerId: profile.uid, memberId });
+        await promoteGroupOrganizer({ groupId, memberId });
         setStatusByGroup((prev) => ({ ...prev, [groupId]: 'Organizer access granted.' }));
       }
     } catch (err) {
