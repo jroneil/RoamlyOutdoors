@@ -104,8 +104,7 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError, canManageEvents
 
       const { event: eventResult, credits: creditResult } = await createEvent({
         values,
-        group: selectedGroup,
-        creatorId: profile.uid
+        group: selectedGroup
       });
 
       if (creditResult.autoPurchaseTriggered) {

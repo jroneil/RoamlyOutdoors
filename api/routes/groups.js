@@ -10,6 +10,7 @@ import {
   MemberProfileMissingError,
   UnauthorizedGroupActionError
 } from '../services/groupMembership.js';
+import { requireAuthentication } from '../lib/authentication.js';
 import { getNearbyGroups } from '../services/nearbyGroups.js';
 
 const router = express.Router();
@@ -70,12 +71,17 @@ router.get('/nearby', (req, res) => {
   }
 });
 
-router.post('/:groupId/organizers', async (req, res) => {
+router.post('/:groupId/organizers', requireAuthentication, async (req, res) => {
   const { groupId } = req.params;
-  const { ownerId, memberId } = req.body ?? {};
+  const { memberId } = req.body ?? {};
+  const ownerId = req.user?.uid;
 
-  if (!ownerId || !memberId) {
-    return res.status(400).json({ error: 'ownerId and memberId are required' });
+  if (!ownerId) {
+    return res.status(401).json({ error: 'Authentication required.' });
+  }
+
+  if (!memberId) {
+    return res.status(400).json({ error: 'memberId is required' });
   }
 
   try {
@@ -89,12 +95,12 @@ router.post('/:groupId/organizers', async (req, res) => {
   }
 });
 
-router.delete('/:groupId/organizers/:memberId', async (req, res) => {
+router.delete('/:groupId/organizers/:memberId', requireAuthentication, async (req, res) => {
   const { groupId, memberId } = req.params;
-  const { ownerId } = req.body ?? {};
+  const ownerId = req.user?.uid;
 
   if (!ownerId) {
-    return res.status(400).json({ error: 'ownerId is required' });
+    return res.status(401).json({ error: 'Authentication required.' });
   }
 
   try {

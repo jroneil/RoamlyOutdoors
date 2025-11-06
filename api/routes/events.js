@@ -8,6 +8,7 @@ import {
   UnauthorizedEventCreatorError,
   publishEventWithCredit
 } from '../services/eventPublishing.js';
+import { requireAuthentication } from '../lib/authentication.js';
 
 const router = express.Router();
 
@@ -55,8 +56,9 @@ const mapErrorToCode = (error) => {
   return 'unknown_error';
 };
 
-router.post('/publish', async (req, res) => {
-  const { userId, values, groupId } = req.body ?? {};
+router.post('/publish', requireAuthentication, async (req, res) => {
+  const { values, groupId } = req.body ?? {};
+  const userId = req.user?.uid;
 
   try {
     const result = await publishEventWithCredit({ userId, values, groupId });

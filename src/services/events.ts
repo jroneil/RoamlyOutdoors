@@ -4,6 +4,7 @@ import type { EventFormValues } from '../types/event';
 import type { Group } from '../types/group';
 import type { CreditConsumptionResult } from '../types/billing';
 import { InsufficientCreditsError as BillingInsufficientCreditsError } from './billing';
+import { AuthenticationError, getCurrentUserToken } from './authToken';
 
 export { BillingInsufficientCreditsError as InsufficientCreditsError };
 
@@ -27,7 +28,6 @@ export class UnauthorizedEventCreatorError extends Error {
 interface CreateEventInput {
   values: EventFormValues;
   group: Group;
-  creatorId: string;
 }
 
 export interface CreateEventResult {
@@ -60,20 +60,30 @@ const normalizeCreditResult = (payload: Partial<CreditConsumptionResult> | undef
 
 export const createEvent = async ({
   values,
-  group,
-  creatorId
+  group
 }: CreateEventInput): Promise<CreateEventWithCreditsResult> => {
   if (!values.groupId || values.groupId !== group.id) {
     throw new MissingGroupAssociationError();
   }
 
+  let token: string;
+
+  try {
+    token = await getCurrentUserToken();
+  } catch (error) {
+    if (error instanceof AuthenticationError) {
+      throw new Error(error.message);
+    }
+    throw error instanceof Error ? error : new Error('Authentication required to publish events.');
+  }
+
   const response = await fetch(`${EVENTS_API_BASE}/publish`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
     },
     body: JSON.stringify({
-      userId: creatorId,
       groupId: group.id,
       values
     })
