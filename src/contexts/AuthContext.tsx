@@ -8,7 +8,13 @@ import {
   useState
 } from 'react';
 import type { User } from 'firebase/auth';
-import { loginWithEmail, loginWithGoogle, logout, subscribeToAuthChanges } from '../services/auth';
+import {
+  loginWithEmail,
+  loginWithGoogle,
+  logout,
+  registerWithEmail,
+  subscribeToAuthChanges
+} from '../services/auth';
 import { getOrCreateUserProfile } from '../services/users';
 import type { AppUser } from '../types/user';
 import {
@@ -27,6 +33,7 @@ interface AuthState {
 interface AuthContextValue extends AuthState {
   loginWithEmail: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
+  registerWithEmail: (displayName: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<AppUser | null>;
 }
@@ -84,6 +91,10 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     await loginWithGoogle();
   }, []);
 
+  const handleRegister = useCallback(async (displayName: string, email: string, password: string) => {
+    await registerWithEmail(displayName, email, password);
+  }, []);
+
   const handleLogout = useCallback(async () => {
     await logout();
   }, []);
@@ -104,10 +115,11 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       ...state,
       loginWithEmail: handleEmailLogin,
       loginWithGoogle: handleGoogleLogin,
+      registerWithEmail: handleRegister,
       logout: handleLogout,
       refreshProfile: handleRefreshProfile
     }),
-    [handleEmailLogin, handleGoogleLogin, handleLogout, handleRefreshProfile, state]
+    [handleEmailLogin, handleGoogleLogin, handleLogout, handleRefreshProfile, handleRegister, state]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

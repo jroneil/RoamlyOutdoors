@@ -392,6 +392,81 @@ footer {
   right: 0;
 }
 
+.auth-gate {
+  position: relative;
+  width: 100%;
+  min-height: 70vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 0;
+}
+
+.auth-gate__backdrop {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(15, 118, 110, 0.14), rgba(59, 130, 246, 0.18));
+  border-radius: 32px;
+  filter: blur(0);
+  opacity: 0.9;
+}
+
+.auth-gate__loading {
+  text-align: center;
+  color: #475569;
+}
+
+.auth-modal {
+  position: relative;
+  z-index: 1;
+  width: min(480px, 100%);
+  display: grid;
+  gap: 1.5rem;
+}
+
+.auth-modal__header {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.auth-modal__tab {
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  background: rgba(241, 245, 249, 0.8);
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  color: #0f172a;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.auth-modal__tab:hover:not(:disabled) {
+  background: rgba(226, 232, 240, 0.95);
+}
+
+.auth-modal__tab.is-active {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.9), rgba(14, 165, 233, 0.9));
+  color: white;
+  border-color: transparent;
+}
+
+.auth-modal__tab:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.auth-modal__body {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.auth-modal__switch {
+  text-align: center;
+  color: #475569;
+  font-size: 0.95rem;
+}
+
 .profile-page {
   display: grid;
   gap: 1.5rem;

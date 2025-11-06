@@ -8,6 +8,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 
 const Layout = ({ children }: PropsWithChildren) => {
   const { profile, logout } = useAuth();
+  const explorePath = profile ? '/home' : '/';
   const hasOrganizerAccess = Boolean(
     profile && ((profile.organizerGroupIds?.length ?? 0) > 0 || profile.role === 'organizer' || profile.role === 'admin')
   );
@@ -21,7 +22,7 @@ const Layout = ({ children }: PropsWithChildren) => {
             Roamly Outdoors
           </Link>
           <nav className="nav-links">
-            <NavLink to="/" style={navLinkClass} end>
+            <NavLink to={explorePath} style={navLinkClass} end>
               Explore
             </NavLink>
             <a href="#create">Create event</a>

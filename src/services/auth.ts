@@ -4,11 +4,13 @@ import {
   type Unsubscribe,
   type User,
   browserLocalPersistence,
+  createUserWithEmailAndPassword,
   onAuthStateChanged,
   setPersistence,
   signInWithEmailAndPassword,
   signInWithPopup,
-  signOut
+  signOut,
+  updateProfile
 } from 'firebase/auth';
 import { auth } from '../firebase/firebaseConfig';
 import type { AppUser } from '../types/user';
@@ -33,6 +35,15 @@ export const loginWithGoogle = async () => {
 export const loginWithEmail = async (email: string, password: string) => {
   await ensurePersistence();
   await signInWithEmailAndPassword(auth, email, password);
+};
+
+export const registerWithEmail = async (displayName: string, email: string, password: string) => {
+  await ensurePersistence();
+  const { user } = await createUserWithEmailAndPassword(auth, email, password);
+
+  if (displayName.trim()) {
+    await updateProfile(user, { displayName });
+  }
 };
 
 export const logout = async () => {
