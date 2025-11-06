@@ -1,18 +1,25 @@
-import { getFirestore } from '../firebaseAdmin.js';
-
-const POSTAL_CODE_COORDINATES = {
-  '98101': { latitude: 47.6101, longitude: -122.3364 },
-  '98109': { latitude: 47.6262, longitude: -122.3505 },
-  '97201': { latitude: 45.5122, longitude: -122.6814 },
-  '98607': { latitude: 45.6776, longitude: -122.5533 },
-  'V6B1A1': { latitude: 49.2827, longitude: -123.1207 },
-  'V8W1L3': { latitude: 48.4284, longitude: -123.3656 },
-  '80443': { latitude: 39.5775, longitude: -106.0932 },
-  '96161': { latitude: 39.3279, longitude: -120.1833 }
-};
+import { getFirestore as getFirestoreDefault } from '../firebaseAdmin.js';
+import {
+  geocodePostalCode as geocodePostalCodeDefault,
+  GeocodingServiceError,
+  PostalCodeNotFoundError,
+  PostalCodeValidationError,
+  normalizePostalCodeForCountry,
+  getDefaultCountry
+} from './geocoding.js';
 
 const EARTH_RADIUS_MILES = 3958.8;
+const EARTH_RADIUS_KILOMETERS = 6371;
 const DATASET_TTL_MS = 5 * 60 * 1000;
+const DEFAULT_RADIUS_MILES = Number.isFinite(Number(process.env.DEFAULT_RADIUS_MI))
+  ? Number(process.env.DEFAULT_RADIUS_MI)
+  : 10;
+const MAX_PAGE_SIZE = 100;
+const DEFAULT_PAGE_SIZE = 20;
+const DEFAULT_COUNTRY = getDefaultCountry();
+
+let geocodePostalCodeImpl = geocodePostalCodeDefault;
+let getFirestoreImpl = getFirestoreDefault;
 
 const toRadians = (value) => (value * Math.PI) / 180;
 
@@ -27,6 +34,19 @@ const distanceInMiles = (lat1, lon1, lat2, lon2) => {
     Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(rLat1) * Math.cos(rLat2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return EARTH_RADIUS_MILES * c;
+};
+
+const distanceInKilometers = (lat1, lon1, lat2, lon2) => {
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+  const rLat1 = toRadians(lat1);
+  const rLat2 = toRadians(lat2);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(rLat1) * Math.cos(rLat2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return EARTH_RADIUS_KILOMETERS * c;
 };
 
 const sanitizeString = (value) => {
@@ -95,7 +115,7 @@ const resolveMemberCount = (data) => {
 let cachedDataset = null;
 
 const loadGroupDataset = async () => {
-  const firestore = getFirestore();
+  const firestore = getFirestoreImpl();
   if (!firestore) {
     throw new LocationServiceUnavailableError(
       'Location search is unavailable right now. Please try again later.'
@@ -121,6 +141,11 @@ const loadGroupDataset = async () => {
 
     const city = sanitizeString(location.city ?? data.city);
     const state = sanitizeString(location.state ?? data.state);
+    const country = sanitizeString(location.country ?? data.country ?? DEFAULT_COUNTRY);
+    const rawPostalCode = sanitizeString(location.postalCode ?? data.postalCode);
+    const normalizedPostalCode = rawPostalCode
+      ? normalizePostalCodeForCountry(rawPostalCode, country || DEFAULT_COUNTRY)
+      : undefined;
     const activities = Array.isArray(data.activities)
       ? sanitizeStringArray(data.activities)
       : sanitizeStringArray(data.tags);
@@ -141,7 +166,9 @@ const loadGroupDataset = async () => {
       coverImageUrl,
       popularityScore: typeof popularity === 'number' ? popularity : undefined,
       activityScore: typeof activityScore === 'number' ? activityScore : undefined,
-      upcomingEventsCount: typeof upcomingEventsCount === 'number' ? upcomingEventsCount : 0
+      upcomingEventsCount: typeof upcomingEventsCount === 'number' ? upcomingEventsCount : 0,
+      postalCode: normalizedPostalCode || undefined,
+      country: country ? country.toUpperCase() : undefined
     });
   });
 
@@ -169,33 +196,50 @@ const getDataset = async () => {
   }
 };
 
-const normalizePostalCode = (postalCode) => postalCode.trim().toUpperCase();
-
-const resolveOrigin = ({ latitude, longitude, postalCode }) => {
+const resolveOrigin = async ({ latitude, longitude, postalCode, country }) => {
   if (
     typeof latitude === 'number' &&
     typeof longitude === 'number' &&
-    !Number.isNaN(latitude) &&
-    !Number.isNaN(longitude)
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude)
   ) {
-    return { latitude, longitude };
+    return {
+      latitude,
+      longitude,
+      source: 'coordinates',
+      country: (country || DEFAULT_COUNTRY).toUpperCase()
+    };
   }
 
   if (postalCode) {
-    const normalized = normalizePostalCode(postalCode);
-    if (normalized in POSTAL_CODE_COORDINATES) {
-      return POSTAL_CODE_COORDINATES[normalized];
-    }
-
-    const nearby = Object.entries(POSTAL_CODE_COORDINATES).find(([code]) =>
-      code.startsWith(normalized)
-    );
-    if (nearby) {
-      return nearby[1];
-    }
+    const result = await geocodePostalCodeImpl({ postalCode, country: country || DEFAULT_COUNTRY });
+    return {
+      latitude: result.latitude,
+      longitude: result.longitude,
+      source: result.source,
+      postalCode: result.postalCode,
+      country: result.country
+    };
   }
 
   return null;
+};
+
+const clampPageSize = (value) => {
+  if (!Number.isFinite(value)) {
+    return DEFAULT_PAGE_SIZE;
+  }
+  return Math.max(1, Math.min(MAX_PAGE_SIZE, Math.trunc(value)));
+};
+
+const toNumberOrUndefined = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const roundToDecimal = (value, decimals) => {
+  const factor = 10 ** decimals;
+  return Math.round(value * factor) / factor;
 };
 
 export class InvalidLocationInputError extends Error {
@@ -212,14 +256,43 @@ export class LocationServiceUnavailableError extends Error {
   }
 }
 
+const computeDistanceMetrics = (origin, group) => {
+  const miles = distanceInMiles(origin.latitude, origin.longitude, group.latitude, group.longitude);
+  const kilometers = distanceInKilometers(
+    origin.latitude,
+    origin.longitude,
+    group.latitude,
+    group.longitude
+  );
+  return {
+    distanceMiles: miles,
+    distanceKilometers: kilometers,
+    distanceMeters: kilometers * 1000
+  };
+};
+
 export const getNearbyGroups = async ({
   latitude,
   longitude,
   postalCode,
-  limit = 12,
-  radiusMiles = 250
+  country = DEFAULT_COUNTRY,
+  limit,
+  radius,
+  radiusMiles,
+  units = 'mi',
+  page,
+  pageSize,
+  exactPostalCode = false
 } = {}) => {
-  const origin = resolveOrigin({ latitude, longitude, postalCode });
+  const normalizedUnits = String(units).toLowerCase() === 'km' ? 'km' : 'mi';
+  const fallbackRadius = Number.isFinite(Number(radiusMiles)) ? Number(radiusMiles) : DEFAULT_RADIUS_MILES;
+  let resolvedRadius = Number(radius);
+
+  if (!Number.isFinite(resolvedRadius) || resolvedRadius <= 0) {
+    resolvedRadius = fallbackRadius;
+  }
+
+  const origin = await resolveOrigin({ latitude, longitude, postalCode, country });
 
   if (!origin) {
     throw new InvalidLocationInputError();
@@ -227,15 +300,21 @@ export const getNearbyGroups = async ({
 
   const groups = await getDataset();
 
-  const maxResults = Math.max(1, Number(limit) || 0);
-  const maxRadius = Math.max(1, Number(radiusMiles) || 0);
+  const normalizedPostal = postalCode
+    ? normalizePostalCodeForCountry(postalCode, origin.country || country || DEFAULT_COUNTRY)
+    : undefined;
 
-  return groups
+  const resolvedPageSize = clampPageSize(
+    toNumberOrUndefined(pageSize) ?? toNumberOrUndefined(limit) ?? DEFAULT_PAGE_SIZE
+  );
+  const resolvedPage = Math.max(1, Math.trunc(toNumberOrUndefined(page) ?? 1));
+
+  const radiusMilesValue = normalizedUnits === 'km' ? resolvedRadius / 1.609344 : resolvedRadius;
+  const radiusMeters = normalizedUnits === 'km' ? resolvedRadius * 1000 : resolvedRadius * 1609.344;
+
+  const enriched = groups
     .map((group) => {
-      const distanceMiles = Math.round(
-        distanceInMiles(origin.latitude, origin.longitude, group.latitude, group.longitude)
-      );
-
+      const metrics = computeDistanceMetrics(origin, group);
       return {
         id: group.id,
         name: group.name,
@@ -244,21 +323,84 @@ export const getNearbyGroups = async ({
         memberCount: group.memberCount,
         activities: group.activities,
         coverImageUrl: group.coverImageUrl,
-        distanceMiles,
-        popularityScore: typeof group.popularityScore === 'number' ? group.popularityScore : group.memberCount,
-        activityScore: typeof group.activityScore === 'number' ? group.activityScore : group.activities.length,
-        upcomingEventsCount: group.upcomingEventsCount
+        popularityScore:
+          typeof group.popularityScore === 'number' ? group.popularityScore : group.memberCount,
+        activityScore:
+          typeof group.activityScore === 'number' ? group.activityScore : group.activities.length,
+        upcomingEventsCount: group.upcomingEventsCount,
+        latitude: group.latitude,
+        longitude: group.longitude,
+        postalCode: group.postalCode,
+        country: group.country,
+        distanceMiles: metrics.distanceMiles,
+        distanceMeters: metrics.distanceMeters
       };
     })
-    .filter((group) => group.distanceMiles <= maxRadius)
-    .sort((a, b) => a.distanceMiles - b.distanceMiles)
-    .slice(0, maxResults);
+    .filter((group) => group.distanceMiles <= radiusMilesValue)
+    .sort((a, b) => a.distanceMiles - b.distanceMiles);
+
+  let prioritized = enriched;
+
+  if (exactPostalCode && normalizedPostal) {
+    const exactMatches = enriched.filter((group) => group.postalCode === normalizedPostal);
+    if (exactMatches.length > 0) {
+      const others = enriched.filter((group) => group.postalCode !== normalizedPostal);
+      prioritized = [...exactMatches, ...others];
+    }
+  }
+
+  const totalResults = prioritized.length;
+  const offset = (resolvedPage - 1) * resolvedPageSize;
+  const paginated = prioritized.slice(offset, offset + resolvedPageSize).map((group) => ({
+    id: group.id,
+    name: group.name,
+    city: group.city,
+    state: group.state,
+    memberCount: group.memberCount,
+    activities: group.activities,
+    coverImageUrl: group.coverImageUrl,
+    popularityScore: group.popularityScore,
+    activityScore: group.activityScore,
+    upcomingEventsCount: group.upcomingEventsCount,
+    distanceMiles: roundToDecimal(group.distanceMiles, 1),
+    distanceMeters: Math.round(group.distanceMeters),
+    postalCode: group.postalCode,
+    country: group.country
+  }));
+
+  return {
+    center: { lat: origin.latitude, lng: origin.longitude },
+    radius: roundToDecimal(resolvedRadius, 2),
+    units: normalizedUnits,
+    page: resolvedPage,
+    pageSize: resolvedPageSize,
+    totalResults,
+    groups: paginated,
+    radiusMeters: Math.round(radiusMeters)
+  };
 };
 
-export const isPostalCodeSupported = (postalCode) => {
+export const isPostalCodeSupported = (postalCode, country = DEFAULT_COUNTRY) => {
   if (!postalCode) {
     return false;
   }
-  const normalized = normalizePostalCode(postalCode);
-  return normalized in POSTAL_CODE_COORDINATES;
+  return Boolean(normalizePostalCodeForCountry(postalCode, country));
+};
+
+export const setGeocodeProvider = (provider) => {
+  geocodePostalCodeImpl = provider || geocodePostalCodeDefault;
+};
+
+export const setFirestoreProvider = (provider) => {
+  getFirestoreImpl = provider || getFirestoreDefault;
+};
+
+export const clearNearbyGroupsCache = () => {
+  cachedDataset = null;
+};
+
+export {
+  GeocodingServiceError,
+  PostalCodeNotFoundError,
+  PostalCodeValidationError
 };

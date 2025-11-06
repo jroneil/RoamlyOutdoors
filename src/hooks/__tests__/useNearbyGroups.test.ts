@@ -3,7 +3,8 @@ import { describe, it } from 'node:test';
 import type { ReactHookDeps } from '../createNearbyGroupsHook';
 import type {
   NearbyGroup,
-  FetchNearbyGroupsParams
+  FetchNearbyGroupsParams,
+  NearbyGroupsApiResponse
 } from '../../services/nearbyGroupsService';
 
 type StateUpdater<T> = (value: T | ((prev: T) => T)) => void;
@@ -234,7 +235,7 @@ const createReactTestRuntime = () => {
   };
 };
 
-type StubFetch = (params: FetchNearbyGroupsParams) => Promise<NearbyGroup[]>;
+type StubFetch = (params: FetchNearbyGroupsParams) => Promise<NearbyGroupsApiResponse>;
 
 let nearbyGroupsModulePromise: Promise<typeof import('../createNearbyGroupsHook.js')> | null = null;
 
@@ -352,7 +353,7 @@ describe('useNearbyGroups', () => {
     const harness = await createHookHarness({
       fetchNearbyGroupsImpl: async (params) => {
         fetchParams = params;
-        return groups;
+        return { groups };
       }
     });
 
@@ -393,7 +394,7 @@ describe('useNearbyGroups', () => {
 
   it('surfaces postal mode when geolocation is denied', async () => {
     const harness = await createHookHarness({
-      fetchNearbyGroupsImpl: async () => []
+      fetchNearbyGroupsImpl: async () => ({ groups: [] })
     });
 
     const originalNavigator = (globalThis as { navigator?: Navigator }).navigator;
@@ -445,7 +446,7 @@ describe('useNearbyGroups', () => {
     const harness = await createHookHarness({
       fetchNearbyGroupsImpl: async (params) => {
         fetchParams = params;
-        return groups;
+        return { groups };
       }
     });
 
@@ -487,13 +488,13 @@ describe('useNearbyGroups', () => {
         callCount += 1;
         if (!firstAbort) {
           firstAbort = params.signal as AbortSignal;
-          return new Promise<NearbyGroup[]>((_, reject) => {
+          return new Promise<NearbyGroupsApiResponse>((_, reject) => {
             firstAbort?.addEventListener('abort', () => {
               reject(new Error('aborted'));
             });
           });
         }
-        return Promise.resolve([]);
+        return Promise.resolve({ groups: [] });
       }
     });
 
