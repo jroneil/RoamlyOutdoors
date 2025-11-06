@@ -14,10 +14,50 @@ import { requireAuthentication } from '../lib/authentication.js';
 import {
   getNearbyGroups,
   InvalidLocationInputError,
-  LocationServiceUnavailableError
+  LocationServiceUnavailableError,
+  PostalCodeValidationError,
+  PostalCodeNotFoundError,
+  GeocodingServiceError
 } from '../services/nearbyGroups.js';
 
 const router = express.Router();
+
+const RATE_LIMIT_MAX_REQUESTS = (() => {
+  const parsed = Number.parseInt(process.env.SEARCH_RATE_LIMIT_MAX_REQUESTS ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 60;
+})();
+
+const RATE_LIMIT_WINDOW_MS = (() => {
+  const parsed = Number.parseInt(process.env.SEARCH_RATE_LIMIT_WINDOW_SECONDS ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed * 1000 : 5 * 60 * 1000;
+})();
+
+const rateLimitBuckets = new Map();
+
+const getClientIp = (req) => {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string' && forwarded.trim()) {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.ip || req.connection?.remoteAddress || req.socket?.remoteAddress || 'unknown';
+};
+
+const consumeRateLimit = (key) => {
+  const now = Date.now();
+  const existing = rateLimitBuckets.get(key);
+
+  if (!existing || existing.expiresAt <= now) {
+    rateLimitBuckets.set(key, { count: 1, expiresAt: now + RATE_LIMIT_WINDOW_MS });
+    return false;
+  }
+
+  if (existing.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return true;
+  }
+
+  existing.count += 1;
+  return false;
+};
 
 const mapErrorToStatus = (error) => {
   if (error instanceof FirestoreUnavailableError) {
@@ -42,6 +82,10 @@ const mapErrorToStatus = (error) => {
 };
 
 const parseNumber = (value) => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
   if (typeof value !== 'string') {
     return undefined;
   }
@@ -56,19 +100,57 @@ const parseNumber = (value) => {
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
+const parseBoolean = (value) => {
+  if (typeof value !== 'string') {
+    return false;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+
+  return normalized === 'true' || normalized === '1' || normalized === 'yes';
+};
+
 router.get('/nearby', async (req, res) => {
-  const { lat, lng, postalCode, limit, radiusMiles } = req.query;
+  const clientIp = getClientIp(req);
+
+  if (consumeRateLimit(clientIp)) {
+    res.status(429).json({ error: 'Too many location searches. Please wait and try again.' });
+    return;
+  }
+
+  const {
+    lat,
+    lng,
+    postalCode,
+    limit,
+    radiusMiles,
+    radius,
+    units,
+    country,
+    page,
+    pageSize,
+    exactPostalCode
+  } = req.query;
 
   try {
-    const groups = await getNearbyGroups({
-      latitude: parseNumber(lat),
-      longitude: parseNumber(lng),
+    const result = await getNearbyGroups({
+      latitude: parseNumber(lat ?? req.query.latitude),
+      longitude: parseNumber(lng ?? req.query.longitude),
       postalCode,
+      country: typeof country === 'string' ? country : undefined,
       limit: parseNumber(limit),
-      radiusMiles: parseNumber(radiusMiles)
+      radiusMiles: parseNumber(radiusMiles),
+      radius: parseNumber(radius),
+      units: typeof units === 'string' ? units : undefined,
+      page: parseNumber(page),
+      pageSize: parseNumber(pageSize),
+      exactPostalCode: parseBoolean(String(exactPostalCode ?? ''))
     });
 
-    res.json({ groups });
+    res.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to load nearby groups.';
 
@@ -77,8 +159,18 @@ router.get('/nearby', async (req, res) => {
       return;
     }
 
-    if (error instanceof InvalidLocationInputError) {
+    if (error instanceof InvalidLocationInputError || error instanceof PostalCodeValidationError) {
       res.status(400).json({ error: message });
+      return;
+    }
+
+    if (error instanceof PostalCodeNotFoundError) {
+      res.status(404).json({ error: message });
+      return;
+    }
+
+    if (error instanceof GeocodingServiceError) {
+      res.status(502).json({ error: message });
       return;
     }
 

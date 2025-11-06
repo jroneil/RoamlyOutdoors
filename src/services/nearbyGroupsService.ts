@@ -7,13 +7,23 @@ export type NearbyGroup = {
   activities: string[];
   coverImageUrl?: string;
   distanceMiles?: number;
+  distanceMeters?: number;
   popularityScore: number;
   activityScore: number;
   upcomingEventsCount: number;
+  postalCode?: string;
+  country?: string;
 };
 
-export type NearbyGroupsResponse = {
+export type NearbyGroupsApiResponse = {
   groups: NearbyGroup[];
+  center?: { lat: number; lng: number };
+  radius?: number;
+  units?: 'mi' | 'km';
+  page?: number;
+  pageSize?: number;
+  totalResults?: number;
+  radiusMeters?: number;
 };
 
 export type FetchNearbyGroupsParams = {
@@ -22,6 +32,12 @@ export type FetchNearbyGroupsParams = {
   postalCode?: string;
   limit?: number;
   radiusMiles?: number;
+  radius?: number;
+  units?: 'mi' | 'km';
+  country?: string;
+  page?: number;
+  pageSize?: number;
+  exactPostalCode?: boolean;
   signal?: AbortSignal;
 };
 
@@ -43,11 +59,31 @@ const buildQueryString = (params: FetchNearbyGroupsParams) => {
   if (typeof params.radiusMiles === 'number') {
     searchParams.set('radiusMiles', params.radiusMiles.toString());
   }
+  if (typeof params.radius === 'number') {
+    searchParams.set('radius', params.radius.toString());
+  }
+  if (params.units) {
+    searchParams.set('units', params.units);
+  }
+  if (params.country) {
+    searchParams.set('country', params.country);
+  }
+  if (typeof params.page === 'number') {
+    searchParams.set('page', params.page.toString());
+  }
+  if (typeof params.pageSize === 'number') {
+    searchParams.set('pageSize', params.pageSize.toString());
+  }
+  if (typeof params.exactPostalCode === 'boolean') {
+    searchParams.set('exactPostalCode', params.exactPostalCode ? 'true' : 'false');
+  }
 
   return searchParams.toString();
 };
 
-export const fetchNearbyGroups = async (params: FetchNearbyGroupsParams): Promise<NearbyGroup[]> => {
+export const fetchNearbyGroups = async (
+  params: FetchNearbyGroupsParams
+): Promise<NearbyGroupsApiResponse> => {
   const queryString = buildQueryString(params);
 
   if (!queryString) {
@@ -73,6 +109,15 @@ export const fetchNearbyGroups = async (params: FetchNearbyGroupsParams): Promis
     throw new Error(message);
   }
 
-  const data: NearbyGroupsResponse = await response.json();
-  return data.groups;
+  const data: NearbyGroupsApiResponse = await response.json();
+  return {
+    groups: data.groups ?? [],
+    center: data.center,
+    radius: data.radius,
+    units: data.units,
+    page: data.page,
+    pageSize: data.pageSize,
+    totalResults: data.totalResults,
+    radiusMeters: data.radiusMeters
+  };
 };

@@ -1,4 +1,8 @@
-import type { NearbyGroup, FetchNearbyGroupsParams } from '../services/nearbyGroupsService.js';
+import type {
+  NearbyGroup,
+  FetchNearbyGroupsParams,
+  NearbyGroupsApiResponse
+} from '../services/nearbyGroupsService.js';
 import { fetchNearbyGroups } from '../services/nearbyGroupsService.js';
 
 export type NearbyGroupsStatus = 'idle' | 'locating' | 'needsPostal' | 'loading' | 'ready' | 'error';
@@ -35,7 +39,9 @@ export const createNearbyGroupsHook = ({
   useCallback: useCallbackImpl,
   useRef: useRefImpl,
   fetchNearbyGroupsImpl = fetchNearbyGroups
-}: ReactHookDeps & { fetchNearbyGroupsImpl?: (params: FetchNearbyGroupsParams) => Promise<NearbyGroup[]> }) => (): NearbyGroupsHook => {
+}: ReactHookDeps & {
+  fetchNearbyGroupsImpl?: (params: FetchNearbyGroupsParams) => Promise<NearbyGroupsApiResponse>;
+}) => (): NearbyGroupsHook => {
   const [status, setStatus] = useStateImpl<NearbyGroupsStatus>('idle');
   const [groups, setGroups] = useStateImpl<NearbyGroup[]>([]);
   const [error, setError] = useStateImpl<string | null>(null);
@@ -75,14 +81,15 @@ export const createNearbyGroupsHook = ({
           : `postal code ${normalizePostalCode(request.postalCode)}`;
 
       try {
-        const result = await fetchNearbyGroupsImpl({ ...queryParams, signal: controller.signal });
+        const response = await fetchNearbyGroupsImpl({ ...queryParams, signal: controller.signal });
+        const resultGroups = Array.isArray(response.groups) ? response.groups : [];
 
         if (!isMountedRef.current || controller.signal.aborted) {
           return;
         }
 
-        setGroups(result);
-        setLocationSummary(result.length ? requestSummary : null);
+        setGroups(resultGroups);
+        setLocationSummary(resultGroups.length ? requestSummary : null);
         setStatus('ready');
       } catch (fetchError) {
         if (!isMountedRef.current || controller.signal.aborted) {
