@@ -11,7 +11,11 @@ import {
   UnauthorizedGroupActionError
 } from '../services/groupMembership.js';
 import { requireAuthentication } from '../lib/authentication.js';
-import { getNearbyGroups } from '../services/nearbyGroups.js';
+import {
+  getNearbyGroups,
+  InvalidLocationInputError,
+  LocationServiceUnavailableError
+} from '../services/nearbyGroups.js';
 
 const router = express.Router();
 
@@ -52,11 +56,11 @@ const parseNumber = (value) => {
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
-router.get('/nearby', (req, res) => {
+router.get('/nearby', async (req, res) => {
   const { lat, lng, postalCode, limit, radiusMiles } = req.query;
 
   try {
-    const groups = getNearbyGroups({
+    const groups = await getNearbyGroups({
       latitude: parseNumber(lat),
       longitude: parseNumber(lng),
       postalCode,
@@ -67,7 +71,18 @@ router.get('/nearby', (req, res) => {
     res.json({ groups });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to load nearby groups.';
-    res.status(400).json({ error: message });
+
+    if (error instanceof LocationServiceUnavailableError) {
+      res.status(503).json({ error: message });
+      return;
+    }
+
+    if (error instanceof InvalidLocationInputError) {
+      res.status(400).json({ error: message });
+      return;
+    }
+
+    res.status(500).json({ error: message });
   }
 });
 

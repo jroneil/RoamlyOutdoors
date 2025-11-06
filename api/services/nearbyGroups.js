@@ -1,125 +1,4 @@
-const GROUPS_DATA = [
-  {
-    id: 'pnw-weekend-hikers',
-    name: 'PNW Weekend Hikers',
-    city: 'Seattle',
-    state: 'WA',
-    latitude: 47.608,
-    longitude: -122.335,
-    activities: ['hiking', 'backpacking'],
-    memberCount: 1280,
-    upcomingEventsCount: 7,
-    popularityScore: 92,
-    activityScore: 88,
-    coverImageUrl:
-      'https://images.unsplash.com/photo-1520409364224-6343fca1f197?auto=format&fit=crop&w=1200&q=80'
-  },
-  {
-    id: 'sound-kayak-collective',
-    name: 'Sound Kayak Collective',
-    city: 'Tacoma',
-    state: 'WA',
-    latitude: 47.2529,
-    longitude: -122.4443,
-    activities: ['paddling', 'camping'],
-    memberCount: 830,
-    upcomingEventsCount: 5,
-    popularityScore: 84,
-    activityScore: 81,
-    coverImageUrl:
-      'https://images.unsplash.com/photo-1526336024174-e58f5cdd8e13?auto=format&fit=crop&w=1200&q=80'
-  },
-  {
-    id: 'cascadia-trail-runners',
-    name: 'Cascadia Trail Runners',
-    city: 'Bellevue',
-    state: 'WA',
-    latitude: 47.6101,
-    longitude: -122.2015,
-    activities: ['trail running', 'cross-training'],
-    memberCount: 460,
-    upcomingEventsCount: 9,
-    popularityScore: 76,
-    activityScore: 93,
-    coverImageUrl:
-      'https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&w=1200&q=80'
-  },
-  {
-    id: 'olympic-mountaineers',
-    name: 'Olympic Mountaineers',
-    city: 'Port Angeles',
-    state: 'WA',
-    latitude: 48.1181,
-    longitude: -123.4307,
-    activities: ['mountaineering', 'climbing'],
-    memberCount: 540,
-    upcomingEventsCount: 6,
-    popularityScore: 79,
-    activityScore: 86,
-    coverImageUrl:
-      'https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=1200&q=80'
-  },
-  {
-    id: 'gorge-climbers',
-    name: 'Columbia Gorge Climbers',
-    city: 'Hood River',
-    state: 'OR',
-    latitude: 45.7054,
-    longitude: -121.5215,
-    activities: ['climbing', 'bouldering'],
-    memberCount: 610,
-    upcomingEventsCount: 4,
-    popularityScore: 82,
-    activityScore: 74,
-    coverImageUrl:
-      'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=80'
-  },
-  {
-    id: 'vancouver-island-packrafters',
-    name: 'Vancouver Island Packrafters',
-    city: 'Victoria',
-    state: 'BC',
-    latitude: 48.4284,
-    longitude: -123.3656,
-    activities: ['paddling', 'expeditions'],
-    memberCount: 390,
-    upcomingEventsCount: 3,
-    popularityScore: 68,
-    activityScore: 71,
-    coverImageUrl:
-      'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80'
-  },
-  {
-    id: 'rockies-backcountry-skiers',
-    name: 'Rockies Backcountry Skiers',
-    city: 'Golden',
-    state: 'BC',
-    latitude: 51.2965,
-    longitude: -116.9639,
-    activities: ['ski touring', 'avalanche training'],
-    memberCount: 720,
-    upcomingEventsCount: 8,
-    popularityScore: 88,
-    activityScore: 90,
-    coverImageUrl:
-      'https://images.unsplash.com/photo-1517824806704-9040b037703b?auto=format&fit=crop&w=1200&q=80'
-  },
-  {
-    id: 'sierra-alpine-collective',
-    name: 'Sierra Alpine Collective',
-    city: 'Truckee',
-    state: 'CA',
-    latitude: 39.3279,
-    longitude: -120.1833,
-    activities: ['alpine climbing', 'ski mountaineering'],
-    memberCount: 950,
-    upcomingEventsCount: 6,
-    popularityScore: 91,
-    activityScore: 84,
-    coverImageUrl:
-      'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1200&q=80'
-  }
-];
+import { getFirestore } from '../firebaseAdmin.js';
 
 const POSTAL_CODE_COORDINATES = {
   '98101': { latitude: 47.6101, longitude: -122.3364 },
@@ -133,6 +12,7 @@ const POSTAL_CODE_COORDINATES = {
 };
 
 const EARTH_RADIUS_MILES = 3958.8;
+const DATASET_TTL_MS = 5 * 60 * 1000;
 
 const toRadians = (value) => (value * Math.PI) / 180;
 
@@ -149,47 +29,230 @@ const distanceInMiles = (lat1, lon1, lat2, lon2) => {
   return EARTH_RADIUS_MILES * c;
 };
 
+const sanitizeString = (value) => {
+  if (typeof value !== 'string') {
+    return '';
+  }
+  return value.trim();
+};
+
+const sanitizeOptionalString = (value) => {
+  const sanitized = sanitizeString(value);
+  return sanitized || undefined;
+};
+
+const sanitizeNumber = (value) => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number(value.trim());
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return undefined;
+};
+
+const sanitizeStringArray = (values) => {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  const seen = new Set();
+  const entries = [];
+
+  values.forEach((value) => {
+    const entry = sanitizeString(value);
+    if (!entry) {
+      return;
+    }
+
+    const normalized = entry.toLowerCase();
+    if (seen.has(normalized)) {
+      return;
+    }
+
+    seen.add(normalized);
+    entries.push(entry);
+  });
+
+  return entries;
+};
+
+const resolveMemberCount = (data) => {
+  const explicit = sanitizeNumber(data.memberCount);
+  if (typeof explicit === 'number') {
+    return Math.max(0, Math.round(explicit));
+  }
+
+  const members = Array.isArray(data.members) ? sanitizeStringArray(data.members) : [];
+  return members.length;
+};
+
+let cachedDataset = null;
+
+const loadGroupDataset = async () => {
+  const firestore = getFirestore();
+  if (!firestore) {
+    throw new LocationServiceUnavailableError(
+      'Location search is unavailable right now. Please try again later.'
+    );
+  }
+
+  const snapshot = await firestore.collection('groups').get();
+  const records = [];
+
+  snapshot.forEach((doc) => {
+    const data = doc.data() ?? {};
+    const location = (typeof data.location === 'object' && data.location) || {};
+    const coordinates =
+      (location.coordinates && typeof location.coordinates === 'object' && location.coordinates) ||
+      location;
+
+    const latitude = sanitizeNumber(coordinates.latitude ?? coordinates.lat);
+    const longitude = sanitizeNumber(coordinates.longitude ?? coordinates.lng);
+
+    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+      return;
+    }
+
+    const city = sanitizeString(location.city ?? data.city);
+    const state = sanitizeString(location.state ?? data.state);
+    const activities = Array.isArray(data.activities)
+      ? sanitizeStringArray(data.activities)
+      : sanitizeStringArray(data.tags);
+    const coverImageUrl = sanitizeOptionalString(data.bannerImage ?? data.coverImageUrl);
+    const popularity = sanitizeNumber(data.popularityScore);
+    const activityScore = sanitizeNumber(data.activityScore);
+    const upcomingEventsCount = sanitizeNumber(data.upcomingEventsCount);
+
+    records.push({
+      id: doc.id,
+      name: sanitizeString(data.title ?? data.name) || doc.id,
+      city,
+      state,
+      latitude,
+      longitude,
+      activities,
+      memberCount: resolveMemberCount(data),
+      coverImageUrl,
+      popularityScore: typeof popularity === 'number' ? popularity : undefined,
+      activityScore: typeof activityScore === 'number' ? activityScore : undefined,
+      upcomingEventsCount: typeof upcomingEventsCount === 'number' ? upcomingEventsCount : 0
+    });
+  });
+
+  cachedDataset = {
+    expiresAt: Date.now() + DATASET_TTL_MS,
+    records
+  };
+
+  return records;
+};
+
+const getDataset = async () => {
+  if (cachedDataset && cachedDataset.expiresAt > Date.now()) {
+    return cachedDataset.records;
+  }
+
+  try {
+    return await loadGroupDataset();
+  } catch (error) {
+    if (cachedDataset) {
+      console.warn('Falling back to cached nearby group dataset after fetch failure.', error);
+      return cachedDataset.records;
+    }
+    throw error;
+  }
+};
+
 const normalizePostalCode = (postalCode) => postalCode.trim().toUpperCase();
 
-export const getNearbyGroups = ({
+const resolveOrigin = ({ latitude, longitude, postalCode }) => {
+  if (
+    typeof latitude === 'number' &&
+    typeof longitude === 'number' &&
+    !Number.isNaN(latitude) &&
+    !Number.isNaN(longitude)
+  ) {
+    return { latitude, longitude };
+  }
+
+  if (postalCode) {
+    const normalized = normalizePostalCode(postalCode);
+    if (normalized in POSTAL_CODE_COORDINATES) {
+      return POSTAL_CODE_COORDINATES[normalized];
+    }
+
+    const nearby = Object.entries(POSTAL_CODE_COORDINATES).find(([code]) =>
+      code.startsWith(normalized)
+    );
+    if (nearby) {
+      return nearby[1];
+    }
+  }
+
+  return null;
+};
+
+export class InvalidLocationInputError extends Error {
+  constructor(message = 'A valid latitude/longitude or postal code is required to search for groups.') {
+    super(message);
+    this.name = 'InvalidLocationInputError';
+  }
+}
+
+export class LocationServiceUnavailableError extends Error {
+  constructor(message = 'Location search is unavailable right now.') {
+    super(message);
+    this.name = 'LocationServiceUnavailableError';
+  }
+}
+
+export const getNearbyGroups = async ({
   latitude,
   longitude,
   postalCode,
   limit = 12,
   radiusMiles = 250
 } = {}) => {
-  let origin = null;
-
-  if (typeof latitude === 'number' && typeof longitude === 'number' && !Number.isNaN(latitude) && !Number.isNaN(longitude)) {
-    origin = { latitude, longitude };
-  } else if (postalCode) {
-    const normalized = normalizePostalCode(postalCode);
-    if (normalized in POSTAL_CODE_COORDINATES) {
-      origin = POSTAL_CODE_COORDINATES[normalized];
-    } else {
-      const nearby = Object.entries(POSTAL_CODE_COORDINATES).find(([code]) => code.startsWith(normalized));
-      if (nearby) {
-        origin = nearby[1];
-      } else {
-        throw new Error("We don't recognize that postal code yet. Try a nearby major city or share your location.");
-      }
-    }
-  }
+  const origin = resolveOrigin({ latitude, longitude, postalCode });
 
   if (!origin) {
-    throw new Error('A valid latitude/longitude or postal code is required to search for groups.');
+    throw new InvalidLocationInputError();
   }
 
-  const groups = GROUPS_DATA.map((group) => {
-    const distanceMiles = Math.round(distanceInMiles(origin.latitude, origin.longitude, group.latitude, group.longitude));
-    return { ...group, distanceMiles };
-  })
-    .filter((group) => group.distanceMiles <= radiusMiles)
-    .sort((a, b) => a.distanceMiles - b.distanceMiles)
-    .slice(0, limit)
-    .map(({ latitude: groupLat, longitude: groupLon, ...group }) => group);
+  const groups = await getDataset();
 
-  return groups;
+  const maxResults = Math.max(1, Number(limit) || 0);
+  const maxRadius = Math.max(1, Number(radiusMiles) || 0);
+
+  return groups
+    .map((group) => {
+      const distanceMiles = Math.round(
+        distanceInMiles(origin.latitude, origin.longitude, group.latitude, group.longitude)
+      );
+
+      return {
+        id: group.id,
+        name: group.name,
+        city: group.city,
+        state: group.state,
+        memberCount: group.memberCount,
+        activities: group.activities,
+        coverImageUrl: group.coverImageUrl,
+        distanceMiles,
+        popularityScore: typeof group.popularityScore === 'number' ? group.popularityScore : group.memberCount,
+        activityScore: typeof group.activityScore === 'number' ? group.activityScore : group.activities.length,
+        upcomingEventsCount: group.upcomingEventsCount
+      };
+    })
+    .filter((group) => group.distanceMiles <= maxRadius)
+    .sort((a, b) => a.distanceMiles - b.distanceMiles)
+    .slice(0, maxResults);
 };
 
 export const isPostalCodeSupported = (postalCode) => {
@@ -199,5 +262,3 @@ export const isPostalCodeSupported = (postalCode) => {
   const normalized = normalizePostalCode(postalCode);
   return normalized in POSTAL_CODE_COORDINATES;
 };
-
-export const nearbyGroupsDatasetSize = GROUPS_DATA.length;

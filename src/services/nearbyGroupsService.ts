@@ -16,7 +16,7 @@ export type NearbyGroupsResponse = {
   groups: NearbyGroup[];
 };
 
-type FetchNearbyGroupsParams = {
+export type FetchNearbyGroupsParams = {
   latitude?: number;
   longitude?: number;
   postalCode?: string;

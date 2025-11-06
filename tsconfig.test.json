@@ -10,11 +10,20 @@
     "esModuleInterop": true,
     "sourceMap": false,
     "declaration": false,
-    "emitDeclarationOnly": false
+    "emitDeclarationOnly": false,
+    "baseUrl": ".",
+    "paths": {
+      "react": ["src/hooks/__tests__/reactStub"]
+    }
   },
   "include": [
     "src/utils/eventRules.ts",
     "src/utils/__tests__/eventRules.test.ts",
+    "src/services/nearbyGroupsService.ts",
+    "src/hooks/createNearbyGroupsHook.ts",
+    "src/hooks/useNearbyGroups.ts",
+    "src/hooks/__tests__/useNearbyGroups.test.ts",
+    "src/hooks/__tests__/**/*.d.ts",
     "src/utils/__tests__/**/*.d.ts"
   ],
   "exclude": []
