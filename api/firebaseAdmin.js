@@ -1,4 +1,33 @@
-import admin from 'firebase-admin';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+
+let adminInstance = null;
+let adminInitialized = false;
+let adminLoadError = null;
+
+const loadAdmin = () => {
+  if (adminInitialized) {
+    return adminInstance;
+  }
+
+  adminInitialized = true;
+
+  try {
+    adminInstance = require('firebase-admin');
+  } catch (error) {
+    adminLoadError = error;
+    adminInstance = null;
+  }
+
+  if (!adminInstance && adminLoadError) {
+    console.warn('Unable to load firebase-admin. Billing sync will be disabled.', adminLoadError);
+  }
+
+  return adminInstance;
+};
+
+export const getFirebaseAdmin = () => loadAdmin();
 
 let firestoreInstance = null;
 
@@ -8,6 +37,12 @@ export const getFirestore = () => {
   }
 
   try {
+    const admin = loadAdmin();
+
+    if (!admin) {
+      return null;
+    }
+
     if (!admin.apps.length) {
       const projectId = process.env.FIREBASE_PROJECT_ID;
 

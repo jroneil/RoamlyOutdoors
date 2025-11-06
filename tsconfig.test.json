@@ -12,6 +12,10 @@
     "declaration": false,
     "emitDeclarationOnly": false
   },
-  "include": ["src/utils/eventRules.ts", "src/utils/__tests__/eventRules.test.ts"],
+  "include": [
+    "src/utils/eventRules.ts",
+    "src/utils/__tests__/eventRules.test.ts",
+    "src/utils/__tests__/**/*.d.ts"
+  ],
   "exclude": []
 }
