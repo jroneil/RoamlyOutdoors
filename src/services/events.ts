@@ -1,14 +1,14 @@
-import { addDoc, arrayRemove, arrayUnion, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { arrayRemove, arrayUnion, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import type { EventFormValues } from '../types/event';
 import type { Group } from '../types/group';
-import {
-  deriveInitialEventVisibility,
-  normalizeEventFee,
-  userCanManageGroup
-} from '../utils/eventRules';
+import type { CreditConsumptionResult } from '../types/billing';
+import { InsufficientCreditsError as BillingInsufficientCreditsError } from './billing';
+
+export { BillingInsufficientCreditsError as InsufficientCreditsError };
 
 const EVENTS_COLLECTION = 'events';
+const EVENTS_API_BASE = '/api/events';
 
 export class MissingGroupAssociationError extends Error {
   constructor(message = 'A valid group is required to create an event.') {
@@ -28,7 +28,6 @@ interface CreateEventInput {
   values: EventFormValues;
   group: Group;
   creatorId: string;
-  now?: Date;
 }
 
 export interface CreateEventResult {
@@ -37,63 +36,82 @@ export interface CreateEventResult {
   hiddenReason: string | null;
 }
 
+interface PublishEventResponsePayload {
+  event?: Partial<CreateEventResult> & { id?: string };
+  credits?: Partial<CreditConsumptionResult>;
+  error?: string;
+  code?: string;
+}
+
+export interface CreateEventWithCreditsResult {
+  event: CreateEventResult;
+  credits: CreditConsumptionResult;
+}
+
+const normalizeCreditResult = (payload: Partial<CreditConsumptionResult> | undefined): CreditConsumptionResult => ({
+  balance: payload?.balance ?? 0,
+  consumed: payload?.consumed ?? 0,
+  autoPurchaseTriggered: Boolean(payload?.autoPurchaseTriggered),
+  autoPurchaseBundleId: payload?.autoPurchaseBundleId ?? null,
+  autoPurchaseCredits: payload?.autoPurchaseCredits ?? null,
+  reminderTriggered: Boolean(payload?.reminderTriggered),
+  reminderSentAt: payload?.reminderSentAt ?? null
+});
+
 export const createEvent = async ({
   values,
   group,
-  creatorId,
-  now = new Date()
-}: CreateEventInput): Promise<CreateEventResult> => {
+  creatorId
+}: CreateEventInput): Promise<CreateEventWithCreditsResult> => {
   if (!values.groupId || values.groupId !== group.id) {
     throw new MissingGroupAssociationError();
   }
 
-  if (!userCanManageGroup(group, creatorId)) {
-    throw new UnauthorizedEventCreatorError();
-  }
-
-  if (!values.startDate) {
-    throw new Error('A start date is required to publish an event.');
-  }
-
-  const visibility = deriveInitialEventVisibility({ group, now });
-  const fee = normalizeEventFee({
-    amount: values.feeAmount,
-    currency: values.feeCurrency,
-    description: values.feeDescription,
-    disclosure: values.feeDisclosure
+  const response = await fetch(`${EVENTS_API_BASE}/publish`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      userId: creatorId,
+      groupId: group.id,
+      values
+    })
   });
 
-  const payload = {
-    title: values.title.trim(),
-    description: values.description.trim(),
-    location: values.location.trim(),
-    startDate: values.startDate ? new Date(values.startDate) : null,
-    endDate: values.endDate ? new Date(values.endDate) : null,
-    hostName: values.hostName.trim(),
-    capacity: Number(values.capacity) || 0,
-    tags: values.tags.map((tag) => tag.trim()).filter(Boolean),
-    attendees: [],
-    bannerImage: values.bannerImage?.trim() || null,
-    groupId: group.id,
-    groupTitle: group.title,
-    createdAt: serverTimestamp(),
-    createdById: creatorId,
-    feeAmountCents: fee.amountCents,
-    feeCurrency: fee.currency,
-    feeDescription: fee.description,
-    feeDisclosure: fee.disclosure,
-    isVisible: visibility.isVisible,
-    hiddenReason: visibility.hiddenReason,
-    hiddenAt: visibility.hiddenAt
+  const body = (await response.json().catch(() => ({}))) as PublishEventResponsePayload;
+
+  if (!response.ok) {
+    const message = body.error ?? 'Unable to publish event.';
+    if (response.status === 400 && body.code === 'missing_group_association') {
+      throw new MissingGroupAssociationError(message);
+    }
+    if (response.status === 403 && body.code === 'unauthorized_event_creator') {
+      throw new UnauthorizedEventCreatorError(message);
+    }
+    if (response.status === 409 && body.code === 'insufficient_credits') {
+      throw new BillingInsufficientCreditsError(message);
+    }
+
+    throw new Error(message);
+  }
+
+  const eventPayload = body.event ?? {};
+  const eventId = typeof eventPayload.id === 'string' ? eventPayload.id : '';
+
+  if (!eventId) {
+    throw new Error('Event creation response was malformed.');
+  }
+
+  const eventResult: CreateEventResult = {
+    id: eventId,
+    isVisible: Boolean(eventPayload.isVisible),
+    hiddenReason: eventPayload.hiddenReason ?? null
   };
 
-  const docRef = await addDoc(collection(db, EVENTS_COLLECTION), payload);
+  const credits = normalizeCreditResult(body.credits);
 
-  return {
-    id: docRef.id,
-    isVisible: visibility.isVisible,
-    hiddenReason: visibility.hiddenReason
-  };
+  return { event: eventResult, credits };
 };
 
 export const rsvpToEvent = async (eventId: string, attendeeName: string) => {

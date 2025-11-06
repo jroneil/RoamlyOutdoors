@@ -3,13 +3,10 @@ import type { EventFormValues } from '../types/event';
 import type { Group } from '../types/group';
 import useAuth from '../hooks/useAuth';
 import {
+  createEvent,
   InsufficientCreditsError,
-  consumeCreditsForEventPublish
-} from '../services/billing';
-import {
   MissingGroupAssociationError,
-  UnauthorizedEventCreatorError,
-  createEvent
+  UnauthorizedEventCreatorError
 } from '../services/events';
 import { isGroupSubscriptionActive, userCanManageGroup } from '../utils/eventRules';
 
@@ -105,7 +102,11 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError, canManageEvents
         throw new Error('The selected group needs an active subscription to publish events.');
       }
 
-      const creditResult = await consumeCreditsForEventPublish(profile.uid);
+      const { event: eventResult, credits: creditResult } = await createEvent({
+        values,
+        group: selectedGroup,
+        creatorId: profile.uid
+      });
 
       if (creditResult.autoPurchaseTriggered) {
         setCreditFeedback({
@@ -125,8 +126,6 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError, canManageEvents
           message: `Event credit applied. Remaining balance: ${creditResult.balance} credits.`
         });
       }
-
-      const result = await createEvent({ values, group: selectedGroup, creatorId: profile.uid });
       setValues((prev) => ({
         ...getDefaultValues(),
         groupId: selectedGroup.id,
@@ -134,7 +133,7 @@ const CreateEventForm = ({ groups, isLoadingGroups, groupsError, canManageEvents
         feeCurrency: prev.feeCurrency
       }));
       setFeedback(
-        result.isVisible
+        eventResult.isVisible
           ? 'Event created successfully! You can see it in the list above.'
           : 'Event saved but hidden until the subscription is reactivated.'
       );
