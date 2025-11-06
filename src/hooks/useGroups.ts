@@ -9,7 +9,8 @@ import {
   query
 } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
-import type { Group, MembershipRequest } from '../types/group';
+import type { Group, GroupMembership, MembershipRequest } from '../types/group';
+import { normalizeTagLabel } from '../types/tag';
 
 const mapMembershipRequest = (value: unknown, toIso: (input: unknown) => string): MembershipRequest | null => {
   if (!value || typeof value !== 'object') {
@@ -52,6 +53,61 @@ const sanitizeIdentifiers = (values: unknown): string[] => {
     });
 };
 
+const buildMemberships = ({
+  groupId,
+  ownerId,
+  ownerName,
+  organizerIds,
+  members,
+  createdAt
+}: {
+  groupId: string;
+  ownerId?: string;
+  ownerName: string;
+  organizerIds: string[];
+  members: string[];
+  createdAt: string;
+}): GroupMembership[] => {
+  const roster = new Map<string, GroupMembership>();
+
+  if (ownerId) {
+    roster.set(ownerId, {
+      id: `${groupId}:${ownerId}:owner`,
+      memberId: ownerId,
+      displayName: ownerName || ownerId,
+      role: 'owner',
+      status: 'active',
+      joinedAt: createdAt || null,
+      invitedAt: null
+    });
+  }
+
+  members.forEach((memberId) => {
+    const role: GroupMembership['role'] = organizerIds.includes(memberId) ? 'organizer' : 'member';
+    const existing = roster.get(memberId);
+
+    if (existing) {
+      roster.set(memberId, {
+        ...existing,
+        role: role === 'organizer' ? 'organizer' : existing.role
+      });
+      return;
+    }
+
+    roster.set(memberId, {
+      id: `${groupId}:${memberId}:${role}`,
+      memberId,
+      displayName: memberId,
+      role,
+      status: 'active',
+      joinedAt: null,
+      invitedAt: null
+    });
+  });
+
+  return Array.from(roster.values());
+};
+
 const mapSnapshot = (snapshot: QuerySnapshot<DocumentData>): Group[] =>
   snapshot.docs.map((doc) => {
     const data = doc.data();
@@ -72,19 +128,40 @@ const mapSnapshot = (snapshot: QuerySnapshot<DocumentData>): Group[] =>
           .filter((request): request is MembershipRequest => Boolean(request))
       : [];
 
+    const organizerIds = sanitizeIdentifiers(data.organizerIds);
+    const organizerNames = sanitizeIdentifiers(data.organizers);
+    const members = sanitizeIdentifiers(data.members);
+    const tagLabels = Array.isArray(data.tags) ? sanitizeIdentifiers(data.tags) : [];
+    const createdAt = toIso(data.createdAt);
+    const memberships = buildMemberships({
+      groupId: doc.id,
+      ownerId: typeof data.ownerId === 'string' ? data.ownerId : undefined,
+      ownerName: typeof data.ownerName === 'string' ? data.ownerName : '',
+      organizerIds,
+      members,
+      createdAt
+    });
+    const memberCount = memberships.filter((membership) => membership.status === 'active').length;
+    const tags = tagLabels.map((label) => ({
+      id: `${doc.id}:tag:${normalizeTagLabel(label)}`,
+      label,
+      normalizedLabel: normalizeTagLabel(label),
+      category: undefined
+    }));
+
     return {
       id: doc.id,
       title: data.title ?? '',
       description: data.description ?? '',
       ownerName: data.ownerName ?? '',
       ownerId: data.ownerId ?? undefined,
-      organizerIds: Array.isArray(data.organizerIds)
-        ? data.organizerIds.filter((value) => typeof value === 'string')
-        : [],
-      members: Array.isArray(data.members) ? data.members : [],
+      organizerIds,
+      members,
+      organizers: organizerNames.length > 0 ? organizerNames : organizerIds,
       bannerImage: data.bannerImage ?? undefined,
       logoImage: data.logoImage ?? undefined,
-      createdAt: toIso(data.createdAt),
+      createdAt,
+      updatedAt: data.updatedAt ? toIso(data.updatedAt) : null,
       subscriptionStatus: data.subscriptionStatus ?? 'none',
       subscriptionExpiredAt: data.subscriptionExpiredAt ? toIso(data.subscriptionExpiredAt) : null,
       subscriptionRenewedAt: data.subscriptionRenewedAt ? toIso(data.subscriptionRenewedAt) : null,
@@ -96,7 +173,12 @@ const mapSnapshot = (snapshot: QuerySnapshot<DocumentData>): Group[] =>
           : 0,
       membershipScreeningEnabled: Boolean(data.membershipScreeningEnabled),
       membershipRequests,
-      normalizedTitle: typeof data.normalizedTitle === 'string' ? data.normalizedTitle : undefined
+      normalizedTitle: typeof data.normalizedTitle === 'string' ? data.normalizedTitle : undefined,
+      tags: tags.length > 0 ? tags : undefined,
+      tagIds: tags.length > 0 ? tags.map((tag) => tag.normalizedLabel) : undefined,
+      memberships,
+      memberCount,
+      location: null
     } satisfies Group;
   });
 
