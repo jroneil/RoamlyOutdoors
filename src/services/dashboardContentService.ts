@@ -1,5 +1,13 @@
 export type DashboardGroupRole = 'owner' | 'organizer' | 'member';
 
+type MembershipStatus = 'active' | 'invited' | 'pending';
+
+type GroupMembership = {
+  userId: string;
+  role: DashboardGroupRole;
+  status: MembershipStatus;
+};
+
 export interface DashboardGroupSummary {
   id: string;
   name: string;
@@ -33,21 +41,36 @@ export interface DashboardActivityResponse {
   events: DashboardEventSummary[];
 }
 
-const sampleGroups: DashboardGroupSummary[] = [
+interface DashboardGroupRecord {
+  id: string;
+  name: string;
+  city: string;
+  state: string;
+  memberCount: number;
+  coverImageUrl?: string;
+  nextEvent?: { id: string; title: string; startDate: string } | null;
+  memberships: GroupMembership[];
+}
+
+const sampleGroups: DashboardGroupRecord[] = [
   {
     id: 'group-1',
     name: 'Seattle Alpine Collective',
     city: 'Seattle',
     state: 'WA',
     memberCount: 286,
-    role: 'owner',
     coverImageUrl:
       'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80',
     nextEvent: {
       id: 'event-1',
       title: 'Sunrise summit of Mount Fremont',
       startDate: '2024-07-12T05:30:00Z'
-    }
+    },
+    memberships: [
+      { userId: 'dev-user', role: 'owner', status: 'active' },
+      { userId: 'organizer-2', role: 'organizer', status: 'active' },
+      { userId: 'member-1', role: 'member', status: 'active' }
+    ]
   },
   {
     id: 'group-2',
@@ -55,14 +78,18 @@ const sampleGroups: DashboardGroupSummary[] = [
     city: 'Tacoma',
     state: 'WA',
     memberCount: 152,
-    role: 'organizer',
     coverImageUrl:
       'https://images.unsplash.com/photo-1526336024174-e58f5cdd8e13?auto=format&fit=crop&w=900&q=80',
     nextEvent: {
       id: 'event-2',
       title: 'Friday night paddle & campfire',
       startDate: '2024-07-19T18:00:00Z'
-    }
+    },
+    memberships: [
+      { userId: 'dev-user', role: 'organizer', status: 'active' },
+      { userId: 'owner-2', role: 'owner', status: 'active' },
+      { userId: 'member-2', role: 'member', status: 'active' }
+    ]
   },
   {
     id: 'group-3',
@@ -70,14 +97,18 @@ const sampleGroups: DashboardGroupSummary[] = [
     city: 'Issaquah',
     state: 'WA',
     memberCount: 87,
-    role: 'member',
     coverImageUrl:
       'https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&w=900&q=80',
     nextEvent: {
       id: 'event-3',
       title: 'Trail stewardship morning',
       startDate: '2024-07-27T08:00:00Z'
-    }
+    },
+    memberships: [
+      { userId: 'dev-user', role: 'member', status: 'active' },
+      { userId: 'owner-3', role: 'owner', status: 'active' },
+      { userId: 'organizer-3', role: 'organizer', status: 'invited' }
+    ]
   }
 ];
 
@@ -129,6 +160,29 @@ const simulateFetch = async <T>(data: T): Promise<T> => {
   return data;
 };
 
+const determineRoleFromMemberships = (
+  memberships: GroupMembership[] | undefined,
+  userId: string | null | undefined
+): DashboardGroupRole => {
+  if (!userId) {
+    return 'member';
+  }
+
+  const activeMembership = memberships?.find(
+    (membership) => membership.userId === userId && membership.status === 'active'
+  );
+
+  if (!activeMembership) {
+    return 'member';
+  }
+
+  if (activeMembership.role === 'owner' || activeMembership.role === 'organizer') {
+    return activeMembership.role;
+  }
+
+  return 'member';
+};
+
 export const fetchDashboardActivity = async (
   userId: string | null | undefined
 ): Promise<DashboardActivityResponse> => {
@@ -137,9 +191,10 @@ export const fetchDashboardActivity = async (
   }
 
   return simulateFetch({
-    groups: sampleGroups.map((group) => ({
-      ...group,
-      nextEvent: group.nextEvent ? { ...group.nextEvent } : null
+    groups: sampleGroups.map(({ memberships, nextEvent, ...rest }) => ({
+      ...rest,
+      role: determineRoleFromMemberships(memberships, userId),
+      nextEvent: nextEvent ? { ...nextEvent } : null
     })),
     events: sampleEvents.map((event) => ({ ...event }))
   });

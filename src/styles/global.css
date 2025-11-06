@@ -1228,6 +1228,18 @@ footer {
   color: #0f172a;
 }
 
+.dashboard-activity-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.dashboard-activity-action {
+  font-size: 0.85rem;
+  padding: 0.55rem 1.1rem;
+}
+
 .dashboard-activity-list {
   display: grid;
   gap: 1rem;
@@ -1682,6 +1694,23 @@ footer {
 
 .primary-link:hover {
   background: rgba(37, 99, 235, 0.2);
+}
+
+.secondary-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 1.35rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  color: #0f172a;
+  font-weight: 600;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.secondary-link:hover {
+  background: rgba(15, 23, 42, 0.14);
+  color: #0b1120;
 }
 
 .error-text {
